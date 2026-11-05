@@ -1,8 +1,6 @@
 
 
--- TABLE 1: USERS
--- Matches existing User.java entity
-
+--TABLE 1
 
 CREATE TABLE IF NOT EXISTS users (
 
@@ -35,16 +33,14 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 
--- TABLE 2: TRACKS
--- Stores available learning tracks
-
+-- TABLE 2
 
 CREATE TABLE IF NOT EXISTS tracks (
 
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     name VARCHAR(100) NOT NULL UNIQUE,
-
+    
     description TEXT,
 
     slug VARCHAR(100) NOT NULL UNIQUE,
@@ -56,10 +52,8 @@ CREATE TABLE IF NOT EXISTS tracks (
 );
 
 
--- =====================================================
--- TABLE 3: SKILL_CATEGORIES
--- Stores major skill classifications
--- =====================================================
+
+-- TABLE 3
 
 CREATE TABLE IF NOT EXISTS skill_categories (
 
@@ -79,11 +73,7 @@ CREATE TABLE IF NOT EXISTS skill_categories (
 
 );
 
-
--- =====================================================
--- TABLE 4: SKILLS
--- Individual nodes in the Skill Dependency Graph
--- =====================================================
+-- TABLE 4
 
 CREATE TABLE IF NOT EXISTS skills (
 
@@ -100,8 +90,6 @@ CREATE TABLE IF NOT EXISTS skills (
     description TEXT,
 
     difficulty_level VARCHAR(20) NOT NULL,
-
-    estimated_minutes INTEGER,
 
     sort_order INTEGER,
 
@@ -120,10 +108,7 @@ CREATE TABLE IF NOT EXISTS skills (
 );
 
 
--- =====================================================
--- TABLE 5: SKILL_DEPENDENCIES
--- Stores prerequisite relationships between skills
--- =====================================================
+-- TABLE 5
 
 CREATE TABLE IF NOT EXISTS skill_dependencies (
 
@@ -158,10 +143,7 @@ CREATE TABLE IF NOT EXISTS skill_dependencies (
 );
 
 
--- =====================================================
--- TABLE 6: QUESTIONS
--- Diagnostic question bank with IRT parameters
--- =====================================================
+-- TABLE 6
 
 CREATE TABLE IF NOT EXISTS questions (
 
@@ -189,10 +171,7 @@ CREATE TABLE IF NOT EXISTS questions (
 );
 
 
--- =====================================================
 -- TABLE 7: ASSESSMENT_ATTEMPTS
--- Stores individual assessment sessions
--- =====================================================
 
 CREATE TABLE IF NOT EXISTS assessment_attempts (
 
@@ -204,12 +183,6 @@ CREATE TABLE IF NOT EXISTS assessment_attempts (
 
     status VARCHAR(20) NOT NULL,
 
-    initial_ability NUMERIC(8,4),
-
-    estimated_ability NUMERIC(8,4),
-
-    standard_error NUMERIC(8,4),
-
     total_questions INTEGER DEFAULT 0,
 
     answered_questions INTEGER DEFAULT 0,
@@ -217,8 +190,6 @@ CREATE TABLE IF NOT EXISTS assessment_attempts (
     started_at TIMESTAMPTZ DEFAULT NOW(),
 
     completed_at TIMESTAMPTZ,
-
-    created_at TIMESTAMPTZ DEFAULT NOW(),
 
     CONSTRAINT fk_attempts_user
         FOREIGN KEY (user_id)
@@ -238,10 +209,7 @@ CREATE TABLE IF NOT EXISTS assessment_attempts (
 );
 
 
--- =====================================================
--- TABLE 8: ASSESSMENT_RESPONSES
--- Stores questions presented and submitted answers
--- =====================================================
+-- TABLE 8
 
 CREATE TABLE IF NOT EXISTS assessment_responses (
 
@@ -257,17 +225,7 @@ CREATE TABLE IF NOT EXISTS assessment_responses (
 
     is_correct BOOLEAN,
 
-    response_time_ms INTEGER,
-
-    ability_before NUMERIC(8,4),
-
-    ability_after NUMERIC(8,4),
-
-    presented_at TIMESTAMPTZ DEFAULT NOW(),
-
     answered_at TIMESTAMPTZ,
-
-    created_at TIMESTAMPTZ DEFAULT NOW(),
 
     CONSTRAINT fk_responses_attempt
         FOREIGN KEY (attempt_id)
@@ -281,18 +239,13 @@ CREATE TABLE IF NOT EXISTS assessment_responses (
         UNIQUE (attempt_id, question_id),
 
     CONSTRAINT chk_question_order
-        CHECK (question_order > 0),
-
-    CONSTRAINT chk_response_time
-        CHECK (response_time_ms IS NULL OR response_time_ms >= 0)
+        CHECK (question_order > 0)
 
 );
 
 
--- =====================================================
--- TABLE 9: USER_SKILL_MASTERY
--- Stores individual user mastery for each skill
--- =====================================================
+
+-- TABLE 9
 
 CREATE TABLE IF NOT EXISTS user_skill_mastery (
 
@@ -305,10 +258,6 @@ CREATE TABLE IF NOT EXISTS user_skill_mastery (
     status VARCHAR(50) DEFAULT 'LOCKED',
 
     mastery_score NUMERIC(8,4) DEFAULT 0,
-
-    confidence_score NUMERIC(8,4) DEFAULT 0,
-
-    evidence_count INTEGER DEFAULT 0,
 
     last_assessed_at TIMESTAMPTZ,
 
@@ -325,12 +274,11 @@ CREATE TABLE IF NOT EXISTS user_skill_mastery (
         REFERENCES skills(id),
 
     CONSTRAINT uq_user_skill_mastery
-        UNIQUE (user_id, skill_id),
-
-    CONSTRAINT chk_evidence_count
-        CHECK (evidence_count >= 0)
+        UNIQUE (user_id, skill_id)
 
 );
+
+--TABLE 10
 
 CREATE TABLE IF NOT EXISTS question_skills (
 
@@ -356,10 +304,9 @@ CREATE TABLE IF NOT EXISTS question_skills (
 );
 
 
--- =====================================================
 -- INDEXES
--- Improve foreign-key lookup and retrieval performance
--- =====================================================
+-- it helps in the foreign-key lookup and makes retrieval performance better
+
 
 CREATE INDEX IF NOT EXISTS idx_skills_track
     ON skills(track_id);

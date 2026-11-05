@@ -26,9 +26,14 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AssessmentService {
 
-    // 12 assessment skills: 6 graph roots + 6 follow-up nodes
+    /**
+     * Fixed 12 assessment skills in deterministic order:
+     * - First 6 skills: The initial root nodes of each of the 6 skill graphs.
+     * - Next 6 skills: Follow-up nodes from each skill graph to complete 12 questions.
+     */
     private static final Map<String, List<String>> TRACK_ASSESSMENT_SKILLS = Map.of(
             "backend-development", List.of(
+                    // 12 root nodes (6 + 6)for the start of assessment
                     "variables-data-types",
                     "classes-objects",
                     "list-set-map",
@@ -55,13 +60,13 @@ public class AssessmentService {
         return getNextQuestion(null, request, authentication);
     }
 
-    // Fetches the next assessment question and updates skill status on correct answers
     @Transactional
     public AssessmentQuestionResponseDTO getNextQuestion(String trackSlug, AssessmentQuestionRequestDTO request, Authentication authentication) {
         if (request == null) {
             request = new AssessmentQuestionRequestDTO();
         }
 
+        // 1. Resolve Track Slug (defaults to backend-development)
         String targetSlug = (trackSlug != null && !trackSlug.isBlank()) ? trackSlug : request.getTrackSlug();
         if (targetSlug == null || targetSlug.isBlank()) {
             targetSlug = "backend-development";
@@ -72,11 +77,13 @@ public class AssessmentService {
 
         Integer correctAns = request.getCorrectAns();
         if (correctAns == null) {
-            correctAns = 0;
+            correctAns = 0; // 0 = Assessment just started
         }
 
+        // 2. Resolve User
         User user = resolveUser(request.getUserId(), authentication);
 
+        // 3. If correct_ans == 1 (previous answered correctly), update skill status to UNLOCKED
         if (correctAns == 1) {
             Skill answeredSkill = resolveAnsweredSkill(request, skillSlugs);
             if (answeredSkill != null && user != null) {
@@ -84,8 +91,10 @@ public class AssessmentService {
             }
         }
 
+        // 4. Determine next index (O(1) calculation)
         int nextIndex = determineNextIndex(correctAns, request, skillSlugs);
 
+        // 5. If assessment reached the end (all 12 questions completed)
         if (nextIndex >= totalQuestions) {
             return AssessmentQuestionResponseDTO.builder()
                     .questionIndex(totalQuestions)
@@ -98,10 +107,12 @@ public class AssessmentService {
                     .build();
         }
 
+        // 6. Direct O(1) lookup of the next skill slug
         String nextSkillSlug = skillSlugs.get(nextIndex);
         Skill nextSkill = skillRepository.findBySlugAndActiveTrue(nextSkillSlug)
                 .orElseThrow(() -> new EntityNotFoundException("Skill not found for slug: " + nextSkillSlug));
 
+        // 7. Fetch question for skill with requested difficulty
         String difficulty = normalizeDifficulty(request.getDifficulty());
         Question question = fetchQuestionForSkill(nextSkill, difficulty);
 
@@ -138,13 +149,11 @@ public class AssessmentService {
                 .build();
     }
 
-    // Returns ordered assessment skill slugs for a track
     public List<String> getAssessmentSkillSlugs(String trackSlug) {
         String slug = (trackSlug != null && !trackSlug.isBlank()) ? trackSlug : "backend-development";
         return TRACK_ASSESSMENT_SKILLS.getOrDefault(slug, TRACK_ASSESSMENT_SKILLS.get("backend-development"));
     }
 
-    // Identifies which skill was answered from request metadata
     private Skill resolveAnsweredSkill(AssessmentQuestionRequestDTO request, List<String> skillSlugs) {
         if (request.getPreviousSkillId() != null) {
             return skillRepository.findById(request.getPreviousSkillId()).orElse(null);
@@ -162,7 +171,6 @@ public class AssessmentService {
         return null;
     }
 
-    // Sets skill status to UNLOCKED without altering mastery scores
     private void unlockSkillForUser(User user, Skill skill) {
         UserSkillMastery mastery = userSkillMasteryRepository
                 .findByUserIdAndSkillId(user.getId(), skill.getId())
@@ -183,7 +191,6 @@ public class AssessmentService {
         log.info("Skill {} ({}) status set to UNLOCKED for user {}", skill.getName(), skill.getId(), user.getEmail());
     }
 
-    // Advances to next question index in sequence
     private int determineNextIndex(Integer correctAns, AssessmentQuestionRequestDTO request, List<String> skillSlugs) {
         if (correctAns == 0) {
             return 0;
@@ -206,14 +213,12 @@ public class AssessmentService {
         return 1;
     }
 
-    // Checks user's current status for a skill in the graph
     private String getSkillStatusForUser(UUID userId, UUID skillId) {
         return userSkillMasteryRepository.findByUserIdAndSkillId(userId, skillId)
                 .map(m -> m.getStatus() != null ? m.getStatus() : "LOCKED")
                 .orElse("UNLOCKED");
     }
 
-    // Normalizes input to BEGINNER, MEDIUM, or HARD
     private String normalizeDifficulty(String difficulty) {
         if (difficulty == null || difficulty.isBlank()) {
             return "BEGINNER";
@@ -227,7 +232,6 @@ public class AssessmentService {
         };
     }
 
-    // Finds matching question by difficulty with fallback
     private Question fetchQuestionForSkill(Skill skill, String difficulty) {
         List<Question> questions = questionRepository.findBySkillIdAndDifficulty(skill.getId(), difficulty);
         if (!questions.isEmpty()) {
@@ -240,7 +244,6 @@ public class AssessmentService {
         return null;
     }
 
-    // Parses JSON option data into key-value map
     private Object parseOptionData(String optionData) {
         if (optionData == null || optionData.isBlank()) {
             return Collections.emptyMap();
@@ -252,7 +255,6 @@ public class AssessmentService {
         }
     }
 
-    // Resolves user from request ID, authentication token, or fallback
     private User resolveUser(UUID requestUserId, Authentication authentication) {
         if (requestUserId != null) {
             return userRepository.findById(requestUserId)

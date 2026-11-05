@@ -1,7 +1,4 @@
--- =====================================================
--- CATEGORY 1: PROGRAMMING FUNDAMENTALS (JAVA)
--- Map 18 Questions to 6 Skills
--- =====================================================
+-- CATEGORY 1:
 
 INSERT INTO question_skills (question_id, skill_id)
 
@@ -12,7 +9,7 @@ SELECT
 FROM (
     VALUES
 
-    -- Skill 1: Variables and Data Types
+    -- 1
     (
         '50000000-0000-0000-0000-000000000001'::UUID,
         'variables-and-data-types'
@@ -26,7 +23,7 @@ FROM (
         'variables-and-data-types'
     ),
 
-    -- Skill 2: Operators and Expressions
+    -- 2 
     (
         '50000000-0000-0000-0000-000000000004'::UUID,
         'operators-and-expressions'
@@ -40,7 +37,7 @@ FROM (
         'operators-and-expressions'
     ),
 
-    -- Skill 3: Conditional Statements
+    -- 3
     (
         '50000000-0000-0000-0000-000000000007'::UUID,
         'conditional-statements'
@@ -54,7 +51,7 @@ FROM (
         'conditional-statements'
     ),
 
-    -- Skill 4: Loops
+    -- 4
     (
         '50000000-0000-0000-0000-000000000010'::UUID,
         'loops'
@@ -68,7 +65,7 @@ FROM (
         'loops'
     ),
 
-    -- Skill 5: Methods and Functions
+    -- 5
     (
         '50000000-0000-0000-0000-000000000013'::UUID,
         'methods-and-functions'
@@ -82,7 +79,7 @@ FROM (
         'methods-and-functions'
     ),
 
-    -- Skill 6: Arrays and Strings
+    -- 6
     (
         '50000000-0000-0000-0000-000000000016'::UUID,
         'arrays-and-strings'
@@ -103,10 +100,8 @@ JOIN skills
 
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
--- =====================================================
--- CATEGORY 2: OBJECT-ORIENTED PROGRAMMING AND JAVA
--- Map 18 Questions to 6 Skills
--- =====================================================
+
+-- CATEGORY 2:
 
 INSERT INTO question_skills (question_id, skill_id)
 
@@ -117,7 +112,7 @@ SELECT
 FROM (
     VALUES
 
-    -- Skill 7: Classes and Objects
+    -- 7
     (
         '50000000-0000-0000-0000-000000000019'::UUID,
         'classes-and-objects'
@@ -131,7 +126,7 @@ FROM (
         'classes-and-objects'
     ),
 
-    -- Skill 8: Encapsulation
+    -- 8
     (
         '50000000-0000-0000-0000-000000000022'::UUID,
         'encapsulation'
@@ -145,7 +140,7 @@ FROM (
         'encapsulation'
     ),
 
-    -- Skill 9: Inheritance
+    -- 9
     (
         '50000000-0000-0000-0000-000000000025'::UUID,
         'inheritance'
@@ -159,7 +154,7 @@ FROM (
         'inheritance'
     ),
 
-    -- Skill 10: Polymorphism
+    -- 10
     (
         '50000000-0000-0000-0000-000000000028'::UUID,
         'polymorphism'
@@ -173,7 +168,7 @@ FROM (
         'polymorphism'
     ),
 
-    -- Skill 11: Abstraction and Interfaces
+    -- 11
     (
         '50000000-0000-0000-0000-000000000031'::UUID,
         'abstraction-and-interfaces'
@@ -187,7 +182,7 @@ FROM (
         'abstraction-and-interfaces'
     ),
 
-    -- Skill 12: Exception Handling
+    -- 12
     (
         '50000000-0000-0000-0000-000000000034'::UUID,
         'exception-handling'
@@ -208,9 +203,7 @@ JOIN skills
 
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
--- =====================================================
--- CATEGORY 3: DATA STRUCTURES, ALGORITHMS AND COLLECTIONS
--- =====================================================
+-- CATEGORY 3:
 
 INSERT INTO question_skills (question_id, skill_id)
 
@@ -221,32 +214,17 @@ SELECT
 FROM (
     VALUES
 
-    -- Skill 13: List, Set and Map
+    -- 13
     ('50000000-0000-0000-0000-000000000037'::UUID, 'list-set-and-map'),
     ('50000000-0000-0000-0000-000000000038'::UUID, 'list-set-and-map'),
     ('50000000-0000-0000-0000-000000000039'::UUID, 'list-set-and-map'),
 
-    -- Skill 14: HashMap Internals
+    -- 14
     ('50000000-0000-0000-0000-000000000040'::UUID, 'hashmap-internals'),
     ('50000000-0000-0000-0000-000000000041'::UUID, 'hashmap-internals'),
     ('50000000-0000-0000-0000-000000000042'::UUID, 'hashmap-internals'),
 
-    -- Skill 15: Stacks and Queues
-    ('50000000-0000-0000-0000-000000000043'::UUID, 'stacks-and-queues'),
-    ('50000000-0000-0000-0000-000000000044'::UUID, 'stacks-and-queues'),
-    ('50000000-0000-0000-0000-000000000045'::UUID, 'stacks-and-queues'),
-
-    -- Skill 16: Linked Lists
-    ('50000000-0000-0000-0000-000000000046'::UUID, 'linked-lists'),
-    ('50000000-0000-0000-0000-000000000047'::UUID, 'linked-lists'),
-    ('50000000-0000-0000-0000-000000000048'::UUID, 'linked-lists'),
-
-    -- Skill 17: Trees and Binary Search Trees
-    ('50000000-0000-0000-0000-000000000049'::UUID, 'trees-and-binary-search-trees'),
-    ('50000000-0000-0000-0000-000000000050'::UUID, 'trees-and-binary-search-trees'),
-    ('50000000-0000-0000-0000-000000000051'::UUID, 'trees-and-binary-search-trees'),
-
-    -- Skill 18: Sorting and Searching
+    -- 15
     ('50000000-0000-0000-0000-000000000052'::UUID, 'sorting-and-searching'),
     ('50000000-0000-0000-0000-000000000053'::UUID, 'sorting-and-searching'),
     ('50000000-0000-0000-0000-000000000054'::UUID, 'sorting-and-searching')
@@ -258,9 +236,7 @@ JOIN skills
 
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
--- =====================================================
--- CATEGORY 4: DATABASE MANAGEMENT
--- =====================================================
+-- CATEGORY 4
 
 INSERT INTO question_skills (question_id, skill_id)
 
@@ -271,32 +247,32 @@ SELECT
 FROM (
     VALUES
 
-    -- Skill 19: Relational Database Concepts
+    -- 16
     ('50000000-0000-0000-0000-000000000055'::UUID, 'relational-database-concepts'),
     ('50000000-0000-0000-0000-000000000056'::UUID, 'relational-database-concepts'),
     ('50000000-0000-0000-0000-000000000057'::UUID, 'relational-database-concepts'),
 
-    -- Skill 20: SQL Fundamentals
+    -- 17
     ('50000000-0000-0000-0000-000000000058'::UUID, 'sql-fundamentals'),
     ('50000000-0000-0000-0000-000000000059'::UUID, 'sql-fundamentals'),
     ('50000000-0000-0000-0000-000000000060'::UUID, 'sql-fundamentals'),
 
-    -- Skill 21: Joins and Subqueries
+    -- 18
     ('50000000-0000-0000-0000-000000000061'::UUID, 'joins-and-subqueries'),
     ('50000000-0000-0000-0000-000000000062'::UUID, 'joins-and-subqueries'),
     ('50000000-0000-0000-0000-000000000063'::UUID, 'joins-and-subqueries'),
 
-    -- Skill 22: Primary and Foreign Keys
+    -- 19
     ('50000000-0000-0000-0000-000000000064'::UUID, 'primary-and-foreign-keys'),
     ('50000000-0000-0000-0000-000000000065'::UUID, 'primary-and-foreign-keys'),
     ('50000000-0000-0000-0000-000000000066'::UUID, 'primary-and-foreign-keys'),
 
-    -- Skill 23: Database Normalization
+    -- 20
     ('50000000-0000-0000-0000-000000000067'::UUID, 'database-normalization'),
     ('50000000-0000-0000-0000-000000000068'::UUID, 'database-normalization'),
     ('50000000-0000-0000-0000-000000000069'::UUID, 'database-normalization'),
 
-    -- Skill 24: Transactions and ACID Properties
+    -- 21
     ('50000000-0000-0000-0000-000000000070'::UUID, 'transactions-and-acid-properties'),
     ('50000000-0000-0000-0000-000000000071'::UUID, 'transactions-and-acid-properties'),
     ('50000000-0000-0000-0000-000000000072'::UUID, 'transactions-and-acid-properties')
@@ -309,11 +285,9 @@ JOIN skills
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
 
--- =====================================================
--- CATEGORY 5: NETWORKING AND API DEVELOPMENT
--- =====================================================
+-- CATEGORY 5
 
--- Skill 25: How the Internet Works
+-- 22
 INSERT INTO question_skills (question_id, skill_id)
 SELECT q.id, s.id
 FROM questions q
@@ -325,7 +299,7 @@ WHERE q.id IN (
 )
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
--- Skill 26: Client-Server Architecture
+-- 23
 INSERT INTO question_skills (question_id, skill_id)
 SELECT q.id, s.id
 FROM questions q
@@ -337,7 +311,7 @@ WHERE q.id IN (
 )
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
--- Skill 27: HTTP and HTTPS
+--24
 INSERT INTO question_skills (question_id, skill_id)
 SELECT q.id, s.id
 FROM questions q
@@ -349,7 +323,7 @@ WHERE q.id IN (
 )
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
--- Skill 28: REST API Architecture
+-- 25
 INSERT INTO question_skills (question_id, skill_id)
 SELECT q.id, s.id
 FROM questions q
@@ -361,7 +335,7 @@ WHERE q.id IN (
 )
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
--- Skill 29: HTTP Methods and Status Codes
+-- 26
 INSERT INTO question_skills (question_id, skill_id)
 SELECT q.id, s.id
 FROM questions q
@@ -373,7 +347,7 @@ WHERE q.id IN (
 )
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
--- Skill 30: Authentication and Authorization
+-- 27
 INSERT INTO question_skills (question_id, skill_id)
 SELECT q.id, s.id
 FROM questions q
@@ -386,11 +360,9 @@ WHERE q.id IN (
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
 
--- =====================================================
--- CATEGORY 6: SPRING BOOT, TESTING AND DEPLOYMENT
--- =====================================================
+-- CATEGORY 6
 
--- Skill 31: Spring Framework and IoC
+-- Skill 28
 INSERT INTO question_skills (question_id, skill_id)
 SELECT q.id, s.id
 FROM questions q
@@ -402,7 +374,7 @@ WHERE q.id IN (
 )
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
--- Skill 32: Dependency Injection and Spring Beans
+-- Skill 29
 INSERT INTO question_skills (question_id, skill_id)
 SELECT q.id, s.id
 FROM questions q
@@ -414,7 +386,7 @@ WHERE q.id IN (
 )
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
--- Skill 33: Spring Boot and Auto-Configuration
+-- Skill 30
 INSERT INTO question_skills (question_id, skill_id)
 SELECT q.id, s.id
 FROM questions q
@@ -426,7 +398,7 @@ WHERE q.id IN (
 )
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
--- Skill 34: Spring Data JPA and Hibernate
+-- Skill 31
 INSERT INTO question_skills (question_id, skill_id)
 SELECT q.id, s.id
 FROM questions q
@@ -438,7 +410,7 @@ WHERE q.id IN (
 )
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
--- Skill 35: Unit and Integration Testing
+-- Skill 32
 INSERT INTO question_skills (question_id, skill_id)
 SELECT q.id, s.id
 FROM questions q
@@ -450,7 +422,7 @@ WHERE q.id IN (
 )
 ON CONFLICT (question_id, skill_id) DO NOTHING;
 
--- Skill 36: Docker and CI/CD
+-- Skill 33
 INSERT INTO question_skills (question_id, skill_id)
 SELECT q.id, s.id
 FROM questions q

@@ -1,7 +1,3 @@
--- ============================================
--- INSERT SKILL CATEGORIES
--- ============================================
-
 INSERT INTO skill_categories (
     id,
     name,
@@ -32,9 +28,9 @@ VALUES
 
 (
     '20000000-0000-0000-0000-000000000003',
-    'Data Structures, Algorithms and Collections',
+    'Java Collections and Problem Solving',
     'Learn data structures, algorithms and Java Collections Framework concepts.',
-    'data-structures-algorithms-collections',
+    'java-collections-problem-solving',
     3,
     TRUE
 ),

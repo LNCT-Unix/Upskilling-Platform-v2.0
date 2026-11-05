@@ -1,7 +1,3 @@
--- =====================================================
--- INSERT 36 BACKEND DEVELOPMENT SKILLS
--- 6 CATEGORIES x 6 SKILLS
--- =====================================================
 
 INSERT INTO skills (
     track_id,
@@ -10,15 +6,13 @@ INSERT INTO skills (
     slug,
     description,
     difficulty_level,
-    estimated_minutes,
     sort_order,
     is_active
 )
 VALUES
 
--- =====================================================
--- CATEGORY 1: PROGRAMMING FUNDAMENTALS (JAVA)
--- =====================================================
+
+-- Category 1: programing fundamentals(java)
 
 (
     '10000000-0000-0000-0000-000000000001',
@@ -27,7 +21,6 @@ VALUES
     'variables-data-types',
     'Understand Java variables, primitive data types, reference types, type conversion and type casting.',
     'BEGINNER',
-    30,
     1,
     TRUE
 ),
@@ -39,7 +32,6 @@ VALUES
     'operators-expressions',
     'Learn arithmetic, relational, logical, assignment, unary and bitwise operators in Java.',
     'BEGINNER',
-    35,
     2,
     TRUE
 ),
@@ -51,7 +43,6 @@ VALUES
     'conditional-statements',
     'Understand decision-making using if, if-else, nested if, else-if and switch statements.',
     'BEGINNER',
-    35,
     3,
     TRUE
 ),
@@ -63,7 +54,6 @@ VALUES
     'loops',
     'Learn iteration using for, while, do-while and nested loops, including break and continue.',
     'BEGINNER',
-    40,
     4,
     TRUE
 ),
@@ -75,7 +65,6 @@ VALUES
     'methods-functions',
     'Understand method declaration, parameters, return values, method overloading and recursion.',
     'INTERMEDIATE',
-    45,
     5,
     TRUE
 ),
@@ -87,15 +76,11 @@ VALUES
     'arrays-strings',
     'Learn array creation, traversal, multidimensional arrays and Java String operations.',
     'INTERMEDIATE',
-    50,
     6,
     TRUE
 ),
 
--- =====================================================
--- CATEGORY 2: OBJECT-ORIENTED PROGRAMMING AND JAVA
--- =====================================================
-
+-- category 2: object-oriented programming and java.
 (
     '10000000-0000-0000-0000-000000000001',
     '20000000-0000-0000-0000-000000000002',
@@ -103,7 +88,6 @@ VALUES
     'classes-objects',
     'Understand classes, objects, constructors, instance variables and object creation in Java.',
     'BEGINNER',
-    40,
     1,
     TRUE
 ),
@@ -115,7 +99,6 @@ VALUES
     'encapsulation',
     'Learn data hiding, access modifiers, getters, setters and encapsulation principles.',
     'INTERMEDIATE',
-    35,
     2,
     TRUE
 ),
@@ -127,7 +110,6 @@ VALUES
     'inheritance',
     'Understand inheritance, parent-child relationships, super keyword and types of inheritance supported by Java.',
     'INTERMEDIATE',
-    40,
     3,
     TRUE
 ),
@@ -139,7 +121,6 @@ VALUES
     'polymorphism',
     'Learn compile-time and runtime polymorphism, method overloading and method overriding.',
     'INTERMEDIATE',
-    45,
     4,
     TRUE
 ),
@@ -151,7 +132,6 @@ VALUES
     'abstraction-interfaces',
     'Understand abstraction, abstract classes, interfaces and their implementation in Java.',
     'ADVANCED',
-    45,
     5,
     TRUE
 ),
@@ -163,14 +143,11 @@ VALUES
     'exception-handling',
     'Learn exception handling using try, catch, finally, throw, throws and custom exceptions.',
     'INTERMEDIATE',
-    40,
     6,
     TRUE
 ),
 
--- =====================================================
--- CATEGORY 3: DATA STRUCTURES, ALGORITHMS AND COLLECTIONS
--- =====================================================
+--category 3: Java Collections and Problem Solving.
 
 (
     '10000000-0000-0000-0000-000000000001',
@@ -179,7 +156,6 @@ VALUES
     'list-set-map',
     'Understand Java Collections Framework interfaces including List, Set and Map.',
     'INTERMEDIATE',
-    50,
     1,
     TRUE
 ),
@@ -191,44 +167,7 @@ VALUES
     'hashmap-internals',
     'Learn hashing, hash codes, collision handling, buckets and internal HashMap operations.',
     'ADVANCED',
-    55,
     2,
-    TRUE
-),
-
-(
-    '10000000-0000-0000-0000-000000000001',
-    '20000000-0000-0000-0000-000000000003',
-    'Stacks and Queues',
-    'stacks-queues',
-    'Understand stack and queue operations, implementations and real-world applications.',
-    'INTERMEDIATE',
-    40,
-    3,
-    TRUE
-),
-
-(
-    '10000000-0000-0000-0000-000000000001',
-    '20000000-0000-0000-0000-000000000003',
-    'Linked Lists',
-    'linked-lists',
-    'Learn singly linked lists, doubly linked lists, traversal, insertion and deletion.',
-    'INTERMEDIATE',
-    45,
-    4,
-    TRUE
-),
-
-(
-    '10000000-0000-0000-0000-000000000001',
-    '20000000-0000-0000-0000-000000000003',
-    'Trees and Binary Search Trees',
-    'trees-binary-search-trees',
-    'Understand tree terminology, binary trees, BST operations and tree traversal techniques.',
-    'ADVANCED',
-    55,
-    5,
     TRUE
 ),
 
@@ -239,14 +178,12 @@ VALUES
     'sorting-searching',
     'Learn linear search, binary search and common sorting algorithms with time complexity.',
     'ADVANCED',
-    55,
     6,
     TRUE
 ),
 
--- =====================================================
--- CATEGORY 4: DATABASE MANAGEMENT
--- =====================================================
+-- Category 4: database managment
+
 
 (
     '10000000-0000-0000-0000-000000000001',
@@ -255,7 +192,6 @@ VALUES
     'relational-database-concepts',
     'Understand relational databases, tables, rows, columns, relationships and schemas.',
     'BEGINNER',
-    35,
     1,
     TRUE
 ),
@@ -267,7 +203,6 @@ VALUES
     'sql-fundamentals',
     'Learn SQL commands including SELECT, INSERT, UPDATE, DELETE and filtering.',
     'BEGINNER',
-    45,
     2,
     TRUE
 ),
@@ -279,7 +214,6 @@ VALUES
     'joins-subqueries',
     'Understand SQL joins, nested queries, correlated subqueries and query composition.',
     'INTERMEDIATE',
-    50,
     3,
     TRUE
 ),
@@ -291,7 +225,6 @@ VALUES
     'primary-foreign-keys',
     'Learn primary keys, foreign keys, unique constraints and referential integrity.',
     'INTERMEDIATE',
-    35,
     4,
     TRUE
 ),
@@ -303,7 +236,6 @@ VALUES
     'database-normalization',
     'Understand database normalization, functional dependencies and normal forms.',
     'ADVANCED',
-    45,
     5,
     TRUE
 ),
@@ -315,14 +247,12 @@ VALUES
     'transactions-acid-properties',
     'Learn database transactions, ACID properties, commit, rollback and isolation.',
     'ADVANCED',
-    45,
     6,
     TRUE
 ),
 
--- =====================================================
--- CATEGORY 5: NETWORKING AND API DEVELOPMENT
--- =====================================================
+
+-- Category 5: networking and API development
 
 (
     '10000000-0000-0000-0000-000000000001',
@@ -331,7 +261,6 @@ VALUES
     'how-internet-works',
     'Understand IP addresses, DNS, domain names, packets and basic internet communication.',
     'BEGINNER',
-    35,
     1,
     TRUE
 ),
@@ -343,7 +272,6 @@ VALUES
     'client-server-architecture',
     'Learn client-server communication, request-response cycles and architectural components.',
     'BEGINNER',
-    35,
     2,
     TRUE
 ),
@@ -355,7 +283,6 @@ VALUES
     'http-https',
     'Understand HTTP communication, HTTPS, TLS and secure data transmission.',
     'INTERMEDIATE',
-    40,
     3,
     TRUE
 ),
@@ -367,7 +294,6 @@ VALUES
     'rest-api-architecture',
     'Learn REST principles, resources, endpoints, statelessness and API design.',
     'INTERMEDIATE',
-    45,
     4,
     TRUE
 ),
@@ -379,7 +305,6 @@ VALUES
     'http-methods-status-codes',
     'Understand GET, POST, PUT, PATCH, DELETE and commonly used HTTP status codes.',
     'INTERMEDIATE',
-    40,
     5,
     TRUE
 ),
@@ -391,14 +316,12 @@ VALUES
     'authentication-authorization',
     'Understand authentication, authorization, sessions, tokens and JWT fundamentals.',
     'ADVANCED',
-    50,
     6,
     TRUE
 ),
 
--- =====================================================
--- CATEGORY 6: SPRING BOOT, TESTING AND DEPLOYMENT
--- =====================================================
+
+-- CATEGORY 6: spring boot, testing and deployment
 
 (
     '10000000-0000-0000-0000-000000000001',
@@ -407,7 +330,6 @@ VALUES
     'spring-framework-ioc',
     'Understand the Spring Framework, Inversion of Control and the Spring container.',
     'INTERMEDIATE',
-    45,
     1,
     TRUE
 ),
@@ -419,7 +341,6 @@ VALUES
     'dependency-injection-spring-beans',
     'Learn dependency injection, bean creation, bean scopes and component management.',
     'INTERMEDIATE',
-    45,
     2,
     TRUE
 ),
@@ -431,7 +352,6 @@ VALUES
     'spring-boot-auto-configuration',
     'Understand Spring Boot starters, auto-configuration, application properties and embedded servers.',
     'INTERMEDIATE',
-    50,
     3,
     TRUE
 ),
@@ -443,7 +363,6 @@ VALUES
     'spring-data-jpa-hibernate',
     'Learn entity mapping, repositories, ORM, relationships and database operations using JPA and Hibernate.',
     'ADVANCED',
-    55,
     4,
     TRUE
 ),
@@ -455,7 +374,6 @@ VALUES
     'unit-integration-testing',
     'Understand unit testing, integration testing, JUnit, Mockito and Spring Boot testing.',
     'ADVANCED',
-    50,
     5,
     TRUE
 ),
@@ -467,7 +385,6 @@ VALUES
     'docker-cicd',
     'Learn Docker fundamentals, containerization, CI/CD pipelines and automated deployment.',
     'ADVANCED',
-    55,
     6,
     TRUE
 )

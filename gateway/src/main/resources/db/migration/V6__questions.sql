@@ -1,8 +1,5 @@
--- =====================================================
--- CATEGORY 1: PROGRAMMING FUNDAMENTALS (JAVA)
--- 6 Skills x 3 Questions = 18 Questions
--- =====================================================
 
+-- CATEGORY 1
 INSERT INTO questions (
     id,
     question_text,
@@ -16,9 +13,7 @@ INSERT INTO questions (
 )
 VALUES
 
--- =====================================================
--- SKILL 1: VARIABLES AND DATA TYPES
--- =====================================================
+-- SKILL 1:
 
 (
     '50000000-0000-0000-0000-000000000001',
@@ -56,9 +51,8 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 2: OPERATORS AND EXPRESSIONS
--- =====================================================
+
+-- SKILL 2
 
 (
     '50000000-0000-0000-0000-000000000004',
@@ -96,10 +90,8 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 3: CONDITIONAL STATEMENTS
--- =====================================================
 
+-- SKILL 3
 (
     '50000000-0000-0000-0000-000000000007',
     'Which statement is used to execute code based on a condition in Java?',
@@ -136,9 +128,7 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 4: LOOPS
--- =====================================================
+-- SKILL 4:
 
 (
     '50000000-0000-0000-0000-000000000010',
@@ -176,9 +166,8 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 5: METHODS AND FUNCTIONS
--- =====================================================
+
+-- SKILL 5
 
 (
     '50000000-0000-0000-0000-000000000013',
@@ -216,10 +205,8 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 6: ARRAYS AND STRINGS
--- =====================================================
 
+-- SKILL 6
 (
     '50000000-0000-0000-0000-000000000016',
     'What is the index of the first element in a Java array?',
@@ -258,10 +245,8 @@ VALUES
 
 ON CONFLICT (id) DO NOTHING;
 
--- =====================================================
--- CATEGORY 2: OBJECT-ORIENTED PROGRAMMING AND JAVA
--- 6 Skills x 3 Questions = 18 Questions
--- =====================================================
+
+-- CATEGORY 2:
 
 INSERT INTO questions (
     id,
@@ -276,9 +261,8 @@ INSERT INTO questions (
 )
 VALUES
 
--- =====================================================
--- SKILL 7: CLASSES AND OBJECTS
--- =====================================================
+-- SKILL 7
+
 
 (
     '50000000-0000-0000-0000-000000000019',
@@ -316,9 +300,7 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 8: ENCAPSULATION
--- =====================================================
+-- SKILL 8: 
 
 (
     '50000000-0000-0000-0000-000000000022',
@@ -356,9 +338,9 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 9: INHERITANCE
--- =====================================================
+
+-- SKILL 9
+
 
 (
     '50000000-0000-0000-0000-000000000025',
@@ -396,9 +378,9 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 10: POLYMORPHISM
--- =====================================================
+
+-- SKILL 10
+
 
 (
     '50000000-0000-0000-0000-000000000028',
@@ -436,9 +418,7 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 11: ABSTRACTION AND INTERFACES
--- =====================================================
+-- SKILL 11:
 
 (
     '50000000-0000-0000-0000-000000000031',
@@ -476,9 +456,7 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 12: EXCEPTION HANDLING
--- =====================================================
+-- SKILL 12: 
 
 (
     '50000000-0000-0000-0000-000000000034',
@@ -519,10 +497,9 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 
--- =====================================================
--- CATEGORY 3: DATA STRUCTURES, ALGORITHMS AND COLLECTIONS
--- 6 Skills x 3 Questions = 18 Questions
--- =====================================================
+
+-- CATEGORY 3
+
 
 INSERT INTO questions (
     id,
@@ -537,9 +514,8 @@ INSERT INTO questions (
 )
 VALUES
 
--- =====================================================
--- SKILL 13: LIST, SET AND MAP
--- =====================================================
+
+-- SKILL 13
 
 (
     '50000000-0000-0000-0000-000000000037',
@@ -577,9 +553,8 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 14: HASHMAP INTERNALS
--- =====================================================
+
+-- SKILL 14
 
 (
     '50000000-0000-0000-0000-000000000040',
@@ -617,129 +592,9 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 15: STACKS AND QUEUES
--- =====================================================
 
-(
-    '50000000-0000-0000-0000-000000000043',
-    'Which principle does a stack follow?',
-    'MCQ',
-    '{"A":"FIFO","B":"LIFO","C":"Random access","D":"Sorted order"}'::jsonb,
-    'B',
-    'A stack follows Last In, First Out. The most recently inserted element is removed first.',
-    'BEGINNER',
-    -1.000,
-    TRUE
-),
+-- SKILL 15
 
-(
-    '50000000-0000-0000-0000-000000000044',
-    'Which principle does a standard queue follow?',
-    'MCQ',
-    '{"A":"LIFO","B":"FIFO","C":"Last element first","D":"Priority-based removal in every implementation"}'::jsonb,
-    'B',
-    'A standard queue follows First In, First Out. The earliest inserted element is removed first.',
-    'MEDIUM',
-    0.000,
-    TRUE
-),
-
-(
-    '50000000-0000-0000-0000-000000000045',
-    'A stack receives the elements 10, 20 and 30 in that order. If two pop operations are performed, which element remains at the top?',
-    'MCQ',
-    '{"A":"10","B":"20","C":"30","D":"The stack becomes empty"}'::jsonb,
-    'A',
-    'The first pop removes 30 and the second removes 20. Therefore, 10 remains at the top.',
-    'HARD',
-    1.000,
-    TRUE
-),
-
--- =====================================================
--- SKILL 16: LINKED LISTS
--- =====================================================
-
-(
-    '50000000-0000-0000-0000-000000000046',
-    'What does each node in a basic singly linked list typically contain?',
-    'MCQ',
-    '{"A":"Only an array index","B":"Data and a reference to the next node","C":"Data and references to both previous and next nodes","D":"Only a reference to the first node"}'::jsonb,
-    'B',
-    'A singly linked list node stores data and a reference to the next node.',
-    'BEGINNER',
-    -1.000,
-    TRUE
-),
-
-(
-    '50000000-0000-0000-0000-000000000047',
-    'What is the time complexity of inserting a new node at the beginning of a singly linked list when the head reference is available?',
-    'MCQ',
-    '{"A":"O(1)","B":"O(log n)","C":"O(n)","D":"O(n log n)"}'::jsonb,
-    'A',
-    'Insertion at the head requires updating the new node reference and the head reference, which takes constant time.',
-    'MEDIUM',
-    0.000,
-    TRUE
-),
-
-(
-    '50000000-0000-0000-0000-000000000048',
-    'What is the time complexity of accessing the element at index k in a singly linked list when only the head reference is available?',
-    'MCQ',
-    '{"A":"O(1)","B":"O(log n)","C":"O(n)","D":"O(1) for every index"}'::jsonb,
-    'C',
-    'A singly linked list must be traversed from the head to reach the requested position. In the worst case, this takes linear time.',
-    'HARD',
-    1.000,
-    TRUE
-),
-
--- =====================================================
--- SKILL 17: TREES AND BINARY SEARCH TREES
--- =====================================================
-
-(
-    '50000000-0000-0000-0000-000000000049',
-    'How many children can a node have in a binary tree at most?',
-    'MCQ',
-    '{"A":"One","B":"Two","C":"Three","D":"Unlimited"}'::jsonb,
-    'B',
-    'A binary tree allows each node to have at most two children.',
-    'BEGINNER',
-    -1.000,
-    TRUE
-),
-
-(
-    '50000000-0000-0000-0000-000000000050',
-    'In a Binary Search Tree with distinct keys, where are values smaller than a node generally stored?',
-    'MCQ',
-    '{"A":"In the right subtree","B":"In the left subtree","C":"Only at leaf nodes","D":"In the root node"}'::jsonb,
-    'B',
-    'In a standard Binary Search Tree, smaller values are stored in the left subtree and larger values in the right subtree.',
-    'MEDIUM',
-    0.000,
-    TRUE
-),
-
-(
-    '50000000-0000-0000-0000-000000000051',
-    'What is the result of an inorder traversal of a Binary Search Tree containing distinct integer keys?',
-    'MCQ',
-    '{"A":"Keys in descending order","B":"Keys in random order","C":"Keys in ascending order","D":"Only leaf nodes"}'::jsonb,
-    'C',
-    'Inorder traversal visits the left subtree, root and right subtree. For a BST with distinct keys, this produces ascending order.',
-    'HARD',
-    1.000,
-    TRUE
-),
-
--- =====================================================
--- SKILL 18: SORTING AND SEARCHING
--- =====================================================
 
 (
     '50000000-0000-0000-0000-000000000052',
@@ -779,11 +634,8 @@ VALUES
 
 ON CONFLICT (id) DO NOTHING;
 
--- =====================================================
--- CATEGORY 4: DATABASE MANAGEMENT
--- 6 Skills x 3 Questions = 18 Questions
--- =====================================================
 
+-- CATEGORY 4
 INSERT INTO questions (
     id,
     question_text,
@@ -797,9 +649,7 @@ INSERT INTO questions (
 )
 VALUES
 
--- =====================================================
--- SKILL 19: RELATIONAL DATABASE CONCEPTS
--- =====================================================
+-- SKILL 16
 
 (
     '50000000-0000-0000-0000-000000000055',
@@ -837,9 +687,7 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 20: SQL FUNDAMENTALS
--- =====================================================
+-- SKILL 17
 
 (
     '50000000-0000-0000-0000-000000000058',
@@ -877,9 +725,9 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 21: JOINS AND SUBQUERIES
--- =====================================================
+
+-- SKILL 18
+
 
 (
     '50000000-0000-0000-0000-000000000061',
@@ -917,9 +765,7 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 22: PRIMARY AND FOREIGN KEYS
--- =====================================================
+-- SKILL 19
 
 (
     '50000000-0000-0000-0000-000000000064',
@@ -957,9 +803,8 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 23: DATABASE NORMALIZATION
--- =====================================================
+
+-- SKILL 20
 
 (
     '50000000-0000-0000-0000-000000000067',
@@ -997,9 +842,7 @@ VALUES
     TRUE
 ),
 
--- =====================================================
--- SKILL 24: TRANSACTIONS AND ACID PROPERTIES
--- =====================================================
+-- SKILL 21
 
 (
     '50000000-0000-0000-0000-000000000070',
@@ -1040,11 +883,9 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 
--- =====================================================
--- CATEGORY 5: NETWORKING AND API DEVELOPMENT
--- =====================================================
+-- CATEGORY 
 
--- Skill 25: How the Internet Works
+-- Skill 22
 
 INSERT INTO questions
 (id, question_text, question_type, option_data, correct_answer, explanation, difficulty, difficulty_parameter, is_active)
@@ -1075,7 +916,7 @@ VALUES
 'HARD', 1.000, TRUE)
 ON CONFLICT (id) DO NOTHING;
 
--- Skill 26: Client-Server Architecture
+-- Skill 23
 
 INSERT INTO questions
 (id, question_text, question_type, option_data, correct_answer, explanation, difficulty, difficulty_parameter, is_active)
@@ -1106,7 +947,7 @@ VALUES
 'HARD', 1.000, TRUE)
 ON CONFLICT (id) DO NOTHING;
 
--- Skill 27: HTTP and HTTPS
+-- Skill 24
 
 INSERT INTO questions
 (id, question_text, question_type, option_data, correct_answer, explanation, difficulty, difficulty_parameter, is_active)
@@ -1137,7 +978,7 @@ VALUES
 'HARD', 1.000, TRUE)
 ON CONFLICT (id) DO NOTHING;
 
--- Skill 28: REST API Architecture
+-- Skill 25
 
 INSERT INTO questions
 (id, question_text, question_type, option_data, correct_answer, explanation, difficulty, difficulty_parameter, is_active)
@@ -1168,7 +1009,7 @@ VALUES
 'HARD', 1.000, TRUE)
 ON CONFLICT (id) DO NOTHING;
 
--- Skill 29: HTTP Methods and Status Codes
+-- Skill 26
 
 INSERT INTO questions
 (id, question_text, question_type, option_data, correct_answer, explanation, difficulty, difficulty_parameter, is_active)
@@ -1199,7 +1040,7 @@ VALUES
 'HARD', 1.000, TRUE)
 ON CONFLICT (id) DO NOTHING;
 
--- Skill 30: Authentication and Authorization
+-- Skill 27
 
 INSERT INTO questions
 (id, question_text, question_type, option_data, correct_answer, explanation, difficulty, difficulty_parameter, is_active)
@@ -1232,11 +1073,9 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 
--- =====================================================
--- CATEGORY 6: SPRING BOOT, TESTING AND DEPLOYMENT
--- =====================================================
 
--- Skill 31: Spring Framework and IoC
+-- CATEGORY 6
+-- Skill 28
 
 INSERT INTO questions
 (id, question_text, question_type, option_data, correct_answer, explanation, difficulty, difficulty_parameter, is_active)
@@ -1267,7 +1106,7 @@ VALUES
 'HARD', 1.000, TRUE)
 ON CONFLICT (id) DO NOTHING;
 
--- Skill 32: Dependency Injection and Spring Beans
+-- Skill 29
 
 INSERT INTO questions
 (id, question_text, question_type, option_data, correct_answer, explanation, difficulty, difficulty_parameter, is_active)
@@ -1298,7 +1137,7 @@ VALUES
 'HARD', 1.000, TRUE)
 ON CONFLICT (id) DO NOTHING;
 
--- Skill 33: Spring Boot and Auto-Configuration
+-- Skill 30
 
 INSERT INTO questions
 (id, question_text, question_type, option_data, correct_answer, explanation, difficulty, difficulty_parameter, is_active)
@@ -1329,7 +1168,7 @@ VALUES
 'HARD', 1.000, TRUE)
 ON CONFLICT (id) DO NOTHING;
 
--- Skill 34: Spring Data JPA and Hibernate
+-- Skill 31
 
 INSERT INTO questions
 (id, question_text, question_type, option_data, correct_answer, explanation, difficulty, difficulty_parameter, is_active)
@@ -1360,7 +1199,7 @@ VALUES
 'HARD', 1.000, TRUE)
 ON CONFLICT (id) DO NOTHING;
 
--- Skill 35: Unit and Integration Testing
+-- Skill 32
 
 INSERT INTO questions
 (id, question_text, question_type, option_data, correct_answer, explanation, difficulty, difficulty_parameter, is_active)
@@ -1391,7 +1230,7 @@ VALUES
 'HARD', 1.000, TRUE)
 ON CONFLICT (id) DO NOTHING;
 
--- Skill 36: Docker and CI/CD
+-- Skill 33
 
 INSERT INTO questions
 (id, question_text, question_type, option_data, correct_answer, explanation, difficulty, difficulty_parameter, is_active)
