@@ -17,6 +17,7 @@ public class AssessmentController {
 
     private final AssessmentService assessmentService;
 
+    // Fetch next assessment question via POST
     @PostMapping(value = {"/{trackSlug}/assesment/getquestion", "/assesment/getquestion"})
     public ResponseEntity<AssessmentQuestionResponseDTO> getNextQuestion(
             @PathVariable(required = false) String trackSlug,
@@ -31,6 +32,7 @@ public class AssessmentController {
         return ResponseEntity.ok(response);
     }
 
+    // Fetch next assessment question via GET for testing
     @GetMapping(value = {"/{trackSlug}/assesment/getquestion", "/assesment/getquestion"})
     public ResponseEntity<AssessmentQuestionResponseDTO> getNextQuestionViaGet(
             @PathVariable(required = false) String trackSlug,
