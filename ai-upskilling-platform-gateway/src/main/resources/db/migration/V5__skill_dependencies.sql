@@ -1,12 +1,10 @@
----- =====================================================
--- SKILL DEPENDENCIES
--- Defines prerequisite -> dependent skill relationships
--- =====================================================
+
+
 
 WITH dependency_pairs (prerequisite_slug, dependent_slug) AS (
     VALUES
 
-    -- CATEGORY 1: PROGRAMMING FUNDAMENTALS
+    -- 1
 
     ('variables-data-types', 'operators-expressions'),
     ('operators-expressions', 'conditional-statements'),
@@ -14,7 +12,7 @@ WITH dependency_pairs (prerequisite_slug, dependent_slug) AS (
     ('loops', 'methods-functions'),
     ('methods-functions', 'arrays-strings'),
 
-    -- CATEGORY 2: OOP AND JAVA
+    -- 2
 
     ('variables-data-types', 'classes-objects'),
     ('classes-objects', 'encapsulation'),
@@ -23,16 +21,13 @@ WITH dependency_pairs (prerequisite_slug, dependent_slug) AS (
     ('classes-objects', 'abstraction-interfaces'),
     ('classes-objects', 'exception-handling'),
 
-    -- CATEGORY 3: DATA STRUCTURES AND ALGORITHMS
+   -- 3
 
     ('arrays-strings', 'list-set-map'),
     ('list-set-map', 'hashmap-internals'),
-    ('list-set-map', 'stacks-queues'),
-    ('arrays-strings', 'linked-lists'),
-    ('linked-lists', 'trees-binary-search-trees'),
     ('arrays-strings', 'sorting-searching'),
 
-    -- CATEGORY 4: DATABASE MANAGEMENT
+  -- 4
 
     ('relational-database-concepts', 'sql-fundamentals'),
     ('sql-fundamentals', 'joins-subqueries'),
@@ -40,7 +35,7 @@ WITH dependency_pairs (prerequisite_slug, dependent_slug) AS (
     ('primary-foreign-keys', 'database-normalization'),
     ('sql-fundamentals', 'transactions-acid-properties'),
 
-    -- CATEGORY 5: NETWORKING AND API DEVELOPMENT
+    -- 5
 
     ('how-internet-works', 'client-server-architecture'),
     ('client-server-architecture', 'http-https'),
@@ -48,7 +43,7 @@ WITH dependency_pairs (prerequisite_slug, dependent_slug) AS (
     ('rest-api-architecture', 'http-methods-status-codes'),
     ('http-methods-status-codes', 'authentication-authorization'),
 
-    -- CATEGORY 6: SPRING BOOT, TESTING AND DEPLOYMENT
+    -- 6
 
     ('classes-objects', 'spring-framework-ioc'),
     ('spring-framework-ioc', 'dependency-injection-spring-beans'),

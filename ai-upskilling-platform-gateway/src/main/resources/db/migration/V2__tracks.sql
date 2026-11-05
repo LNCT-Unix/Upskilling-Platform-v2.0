@@ -1,7 +1,4 @@
--- ============================================
--- INSERT BACKEND DEVELOPMENT TRACK
--- ============================================
-
+--only backend track doing for now
 INSERT INTO tracks (
     id,
     name,
