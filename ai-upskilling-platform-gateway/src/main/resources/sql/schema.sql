@@ -302,6 +302,8 @@ CREATE TABLE IF NOT EXISTS user_skill_mastery (
 
     skill_id UUID NOT NULL,
 
+    status VARCHAR(50) DEFAULT 'LOCKED',
+
     mastery_score NUMERIC(8,4) DEFAULT 0,
 
     confidence_score NUMERIC(8,4) DEFAULT 0,

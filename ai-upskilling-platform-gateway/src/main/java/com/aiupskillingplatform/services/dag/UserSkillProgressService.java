@@ -52,9 +52,15 @@ public class UserSkillProgressService {
         List<UserSkillMastery> masteries = userSkillMasteryRepository.findByUserIdAndSkillTrackId(userId, trackId);
 
         Map<UUID, Double> masteryMap = new HashMap<>();
+        Map<UUID, String> statusMap = new HashMap<>();
         for (UserSkillMastery mastery : masteries) {
-            if (mastery.getSkill() != null && mastery.getMasteryScore() != null) {
-                masteryMap.put(mastery.getSkill().getId(), mastery.getMasteryScore());
+            if (mastery.getSkill() != null) {
+                if (mastery.getMasteryScore() != null) {
+                    masteryMap.put(mastery.getSkill().getId(), mastery.getMasteryScore());
+                }
+                if (mastery.getStatus() != null && !mastery.getStatus().isBlank()) {
+                    statusMap.put(mastery.getSkill().getId(), mastery.getStatus());
+                }
             }
         }
 
@@ -77,7 +83,10 @@ public class UserSkillProgressService {
             List<String> prereqNames = prereqNamesMap.getOrDefault(skillId, Collections.emptyList());
 
             String status;
-            if (score != null && score >= threshold) {
+            String explicitStatus = statusMap.get(skillId);
+            if (explicitStatus != null) {
+                status = explicitStatus;
+            } else if (score != null && score >= threshold) {
                 status = "MASTERED";
             } else {
                 List<UUID> prereqIds = prerequisitesMap.get(skillId);

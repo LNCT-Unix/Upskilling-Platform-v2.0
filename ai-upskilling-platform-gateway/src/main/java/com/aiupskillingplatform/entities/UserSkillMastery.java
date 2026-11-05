@@ -34,6 +34,9 @@ public class UserSkillMastery {
     @JoinColumn(name = "skill_id", nullable = false)
     private Skill skill;
 
+    @Column(name = "status")
+    private String status;
+
     @Column(name = "mastery_score", nullable = false)
     private Double masteryScore = 0.0;
 
