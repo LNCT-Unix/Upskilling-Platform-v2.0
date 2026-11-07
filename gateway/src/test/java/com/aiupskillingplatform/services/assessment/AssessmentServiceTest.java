@@ -1,7 +1,6 @@
 package com.aiupskillingplatform.services.assessment;
 
-import com.aiupskillingplatform.dto.assessment.AssessmentQuestionRequestDTO;
-import com.aiupskillingplatform.dto.assessment.AssessmentQuestionResponseDTO;
+import com.aiupskillingplatform.dto.assessment.*;
 import com.aiupskillingplatform.entities.*;
 import com.aiupskillingplatform.enums.Role;
 import com.aiupskillingplatform.enums.UserStatus;
@@ -15,6 +14,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 
@@ -36,7 +38,7 @@ class AssessmentServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private UserSkillMasteryRepository userSkillMasteryRepository;
+    private UserSkillMasteryRepository masteryRepository;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -47,6 +49,7 @@ class AssessmentServiceTest {
     private User testUser;
     private Skill skill1;
     private Skill skill2;
+    private Authentication auth;
 
     @BeforeEach
     void setUp() {
@@ -66,158 +69,141 @@ class AssessmentServiceTest {
         skill2.setId(UUID.randomUUID());
         skill2.setName("Classes and Objects");
         skill2.setSlug("classes-objects");
+
+        auth = new TestingAuthenticationToken("student@example.com", "credentials", "ROLE_USER");
     }
 
     @Test
-    void testPredefinedSkillSequenceContains12Skills() {
-        List<String> slugs = assessmentService.getAssessmentSkillSlugs("backend-development");
-        assertEquals(12, slugs.size());
-        assertEquals("variables-data-types", slugs.get(0));
-        assertEquals("classes-objects", slugs.get(1));
-        assertEquals("dependency-injection-spring-beans", slugs.get(11));
-    }
-
-    @Test
-    void testInitialQuestionWhenCorrectAnsIsZero() {
-        when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
+    void testStartAssessmentReturnsFirstQuestion() {
+        when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(testUser));
         when(skillRepository.findBySlugAndActiveTrue("variables-data-types")).thenReturn(Optional.of(skill1));
 
         Question q1 = new Question();
         q1.setId(UUID.randomUUID());
         q1.setQuestionText("What is a variable?");
         q1.setDifficulty("BEGINNER");
-        q1.setCorrectAnswer("B");
+        q1.setOptionData("{\"A\": \"Container\"}");
 
         when(questionRepository.findBySkillIdAndDifficulty(eq(skill1.getId()), eq("BEGINNER")))
                 .thenReturn(List.of(q1));
 
-        AssessmentQuestionRequestDTO request = AssessmentQuestionRequestDTO.builder()
-                .correctAns(0)
-                .difficulty("BEGINNER")
-                .trackSlug("backend-development")
-                .userId(testUser.getId())
-                .build();
-
-        AssessmentQuestionResponseDTO response = assessmentService.getNextQuestion(request, null);
+        AssessmentStepResponse response = assessmentService.start("backend-development", "BEGINNER", auth);
 
         assertNotNull(response);
-        assertEquals(0, response.getQuestionIndex());
-        assertEquals(1, response.getQuestionNumber());
-        assertEquals(12, response.getTotalQuestions());
-        assertFalse(response.isCompleted());
-        assertEquals(skill1.getId(), response.getSkill().id());
-        assertEquals("Variables and Data Types", response.getSkill().name());
-        assertEquals(q1.getId(), response.getQuestion().id());
-
-        // Mastery not updated on question start
-        verify(userSkillMasteryRepository, never()).save(any());
+        assertEquals(0, response.questionIndex());
+        assertEquals(1, response.questionNumber());
+        assertEquals(12, response.totalQuestions());
+        assertFalse(response.completed());
+        assertEquals("Variables and Data Types", response.skill().name());
+        assertEquals(q1.getId(), response.question().id());
     }
 
     @Test
-    void testCorrectAnswerUpdatesSkillStatusToUnlockedAndMovesToNextSkill() {
-        when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
-        when(skillRepository.findById(skill1.getId())).thenReturn(Optional.of(skill1));
-        when(skillRepository.findBySlugAndActiveTrue("classes-objects")).thenReturn(Optional.of(skill2));
-        when(userSkillMasteryRepository.findByUserIdAndSkillId(testUser.getId(), skill1.getId()))
-                .thenReturn(Optional.empty());
+    void testStartAssessmentUnauthenticatedThrows401() {
+        assertThrows(ResponseStatusException.class, () ->
+                assessmentService.start("backend-development", "BEGINNER", null));
+    }
 
+    @Test
+    void testStartAssessmentUnknownTrackThrows404() {
+        assertThrows(ResponseStatusException.class, () ->
+                assessmentService.start("unknown-track", "BEGINNER", auth));
+    }
+
+    @Test
+    void testSubmitCorrectAnswerUnlocksSkillAndReturnsNext() {
+        when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(testUser));
+
+        UUID q1Id = UUID.randomUUID();
+        Question q1 = new Question();
+        q1.setId(q1Id);
+        q1.setQuestionText("What is a variable?");
+        q1.setCorrectAnswer("A");
+        q1.setExplanation("A variable stores data values.");
+
+        when(questionRepository.findById(q1Id)).thenReturn(Optional.of(q1));
+        when(questionRepository.findSkillsByQuestionId(q1Id)).thenReturn(List.of(skill1));
+        when(masteryRepository.findByUserIdAndSkillId(testUser.getId(), skill1.getId())).thenReturn(Optional.empty());
+
+        when(skillRepository.findBySlugAndActiveTrue("classes-objects")).thenReturn(Optional.of(skill2));
         Question q2 = new Question();
         q2.setId(UUID.randomUUID());
-        q2.setQuestionText("What is OOP?");
+        q2.setQuestionText("What is a class?");
         q2.setDifficulty("BEGINNER");
-
         when(questionRepository.findBySkillIdAndDifficulty(eq(skill2.getId()), eq("BEGINNER")))
                 .thenReturn(List.of(q2));
 
-        AssessmentQuestionRequestDTO request = AssessmentQuestionRequestDTO.builder()
-                .correctAns(1) // 1 = Answered correctly
-                .difficulty("BEGINNER")
-                .trackSlug("backend-development")
-                .userId(testUser.getId())
-                .previousSkillId(skill1.getId())
-                .questionIndex(0)
-                .build();
+        SubmitAnswerRequest request = new SubmitAnswerRequest(q1Id, "A", "BEGINNER");
+        AnswerResultResponse result = assessmentService.submitAnswer("backend-development", request, auth);
 
-        AssessmentQuestionResponseDTO response = assessmentService.getNextQuestion(request, null);
+        assertTrue(result.correct());
+        assertEquals("A", result.correctAnswer());
+        assertEquals("A variable stores data values.", result.explanation());
+        assertNotNull(result.next());
+        assertEquals(1, result.next().questionIndex());
+        assertEquals(2, result.next().questionNumber());
+        assertEquals("Classes and Objects", result.next().skill().name());
 
-        assertNotNull(response);
-        assertEquals(1, response.getQuestionIndex());
-        assertEquals(2, response.getQuestionNumber());
-        assertEquals("Classes and Objects", response.getSkill().name());
-
-        // Verify skill was saved with UNLOCKED status
         ArgumentCaptor<UserSkillMastery> captor = ArgumentCaptor.forClass(UserSkillMastery.class);
-        verify(userSkillMasteryRepository).save(captor.capture());
-        UserSkillMastery saved = captor.getValue();
-        assertEquals("UNLOCKED", saved.getStatus());
-        assertEquals(0.0, saved.getMasteryScore());
-        assertEquals(skill1, saved.getSkill());
-        assertEquals(testUser, saved.getUser());
+        verify(masteryRepository).save(captor.capture());
+        assertEquals("UNLOCKED", captor.getValue().getStatus());
     }
 
     @Test
-    void testIncorrectAnswerDoesNotUnlockSkill() {
-        when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
-        when(skillRepository.findBySlugAndActiveTrue("classes-objects")).thenReturn(Optional.of(skill2));
+    void testSubmitIncorrectAnswerDoesNotUnlockSkill() {
+        when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(testUser));
 
+        UUID q1Id = UUID.randomUUID();
+        Question q1 = new Question();
+        q1.setId(q1Id);
+        q1.setQuestionText("What is a variable?");
+        q1.setCorrectAnswer("A");
+        q1.setExplanation("A variable stores data values.");
+
+        when(questionRepository.findById(q1Id)).thenReturn(Optional.of(q1));
+        when(questionRepository.findSkillsByQuestionId(q1Id)).thenReturn(List.of(skill1));
+
+        when(skillRepository.findBySlugAndActiveTrue("classes-objects")).thenReturn(Optional.of(skill2));
         Question q2 = new Question();
         q2.setId(UUID.randomUUID());
-        q2.setQuestionText("What is OOP?");
+        q2.setQuestionText("What is a class?");
         q2.setDifficulty("BEGINNER");
-
         when(questionRepository.findBySkillIdAndDifficulty(eq(skill2.getId()), eq("BEGINNER")))
                 .thenReturn(List.of(q2));
 
-        AssessmentQuestionRequestDTO request = AssessmentQuestionRequestDTO.builder()
-                .correctAns(2) // 2 = Answered incorrectly
-                .difficulty("BEGINNER")
-                .trackSlug("backend-development")
-                .userId(testUser.getId())
-                .previousSkillId(skill1.getId())
-                .questionIndex(0)
-                .build();
+        SubmitAnswerRequest request = new SubmitAnswerRequest(q1Id, "B", "BEGINNER");
+        AnswerResultResponse result = assessmentService.submitAnswer("backend-development", request, auth);
 
-        AssessmentQuestionResponseDTO response = assessmentService.getNextQuestion(request, null);
-
-        assertNotNull(response);
-        assertEquals(1, response.getQuestionIndex());
-        assertEquals(2, response.getQuestionNumber());
-
-        // Verify save was NOT called
-        verify(userSkillMasteryRepository, never()).save(any());
+        assertFalse(result.correct());
+        verify(masteryRepository, never()).save(any());
+        assertEquals(1, result.next().questionIndex());
     }
 
     @Test
-    void testAssessmentCompletesAfter12Questions() {
+    void testSubmitAnswerForFinalQuestionCompletesAssessment() {
+        when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(testUser));
+
         Skill skill12 = new Skill();
         skill12.setId(UUID.randomUUID());
-        skill12.setName("Dependency Injection and Spring Beans");
+        skill12.setName("Dependency Injection");
         skill12.setSlug("dependency-injection-spring-beans");
 
-        when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
-        when(skillRepository.findById(skill12.getId())).thenReturn(Optional.of(skill12));
-        when(userSkillMasteryRepository.findByUserIdAndSkillId(testUser.getId(), skill12.getId()))
-                .thenReturn(Optional.empty());
+        UUID q12Id = UUID.randomUUID();
+        Question q12 = new Question();
+        q12.setId(q12Id);
+        q12.setCorrectAnswer("C");
+        q12.setExplanation("Spring IoC injects beans.");
 
-        AssessmentQuestionRequestDTO request = AssessmentQuestionRequestDTO.builder()
-                .correctAns(1)
-                .trackSlug("backend-development")
-                .userId(testUser.getId())
-                .previousSkillId(skill12.getId())
-                .questionIndex(11) // 12th question (0-based)
-                .build();
+        when(questionRepository.findById(q12Id)).thenReturn(Optional.of(q12));
+        when(questionRepository.findSkillsByQuestionId(q12Id)).thenReturn(List.of(skill12));
 
-        AssessmentQuestionResponseDTO response = assessmentService.getNextQuestion(request, null);
+        SubmitAnswerRequest request = new SubmitAnswerRequest(q12Id, "C", "BEGINNER");
+        AnswerResultResponse result = assessmentService.submitAnswer("backend-development", request, auth);
 
-        assertNotNull(response);
-        assertTrue(response.isCompleted());
-        assertEquals(12, response.getQuestionIndex());
-        assertEquals(12, response.getQuestionNumber());
-        assertNull(response.getQuestion());
-        assertNull(response.getSkill());
-        assertTrue(response.getMessage().contains("Assessment completed"));
-
-        // Skill was still unlocked
-        verify(userSkillMasteryRepository).save(any());
+        assertTrue(result.correct());
+        assertTrue(result.next().completed());
+        assertNull(result.next().question());
+        assertNull(result.next().skill());
+        assertEquals(12, result.next().questionIndex());
     }
 }

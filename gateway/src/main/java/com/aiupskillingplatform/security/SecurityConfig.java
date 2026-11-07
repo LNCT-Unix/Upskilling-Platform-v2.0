@@ -53,7 +53,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/register",
                                 "/api/auth/login",
-                                "/track/**"
+                                "/track/**",
+                                "/api/tracks/**"
                         ).permitAll()
 
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

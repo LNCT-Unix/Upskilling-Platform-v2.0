@@ -1,60 +1,37 @@
 package com.aiupskillingplatform.controllers.IrtAssessment;
 
-import com.aiupskillingplatform.dto.assessment.AssessmentQuestionRequestDTO;
-import com.aiupskillingplatform.dto.assessment.AssessmentQuestionResponseDTO;
+import com.aiupskillingplatform.dto.assessment.AnswerResultResponse;
+import com.aiupskillingplatform.dto.assessment.AssessmentStepResponse;
+import com.aiupskillingplatform.dto.assessment.SubmitAnswerRequest;
 import com.aiupskillingplatform.services.assessment.AssessmentService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
-
 @RestController
-@RequestMapping("/track")
+@RequestMapping("/api/tracks/{trackSlug}/assessment")
 @RequiredArgsConstructor
 public class AssessmentController {
 
     private final AssessmentService assessmentService;
 
-    // Fetch next assessment question via POST
-    @PostMapping(value = {"/{trackSlug}/assesment/getquestion", "/assesment/getquestion"})
-    public ResponseEntity<AssessmentQuestionResponseDTO> getNextQuestion(
-            @PathVariable(required = false) String trackSlug,
-            @RequestBody(required = false) AssessmentQuestionRequestDTO request,
+    // Read-only: returns the first question. Safe for GET.
+    @GetMapping("/start")
+    public ResponseEntity<AssessmentStepResponse> start(
+            @PathVariable String trackSlug,
+            @RequestParam(defaultValue = "BEGINNER") String difficulty,
             Authentication authentication) {
-
-        if (request == null) {
-            request = new AssessmentQuestionRequestDTO();
-        }
-
-        AssessmentQuestionResponseDTO response = assessmentService.getNextQuestion(trackSlug, request, authentication);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(assessmentService.start(trackSlug, difficulty, authentication));
     }
 
-    // Fetch next assessment question via GET for testing
-    @GetMapping(value = {"/{trackSlug}/assesment/getquestion", "/assesment/getquestion"})
-    public ResponseEntity<AssessmentQuestionResponseDTO> getNextQuestionViaGet(
-            @PathVariable(required = false) String trackSlug,
-            @RequestParam(value = "correct_ans", required = false, defaultValue = "0") Integer correctAns,
-            @RequestParam(value = "difficulty", required = false, defaultValue = "BEGINNER") String difficulty,
-            @RequestParam(value = "previousSkillId", required = false) UUID previousSkillId,
-            @RequestParam(value = "previousQuestionId", required = false) UUID previousQuestionId,
-            @RequestParam(value = "questionIndex", required = false) Integer questionIndex,
-            @RequestParam(value = "userId", required = false) UUID userId,
+    // State-changing: grades the answer, unlocks the skill if correct, returns the next question.
+    @PostMapping("/answers")
+    public ResponseEntity<AnswerResultResponse> submitAnswer(
+            @PathVariable String trackSlug,
+            @Valid @RequestBody SubmitAnswerRequest request,
             Authentication authentication) {
-
-        AssessmentQuestionRequestDTO request = AssessmentQuestionRequestDTO.builder()
-                .correctAns(correctAns)
-                .difficulty(difficulty)
-                .trackSlug(trackSlug)
-                .previousSkillId(previousSkillId)
-                .previousQuestionId(previousQuestionId)
-                .questionIndex(questionIndex)
-                .userId(userId)
-                .build();
-
-        AssessmentQuestionResponseDTO response = assessmentService.getNextQuestion(trackSlug, request, authentication);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(assessmentService.submitAnswer(trackSlug, request, authentication));
     }
 }

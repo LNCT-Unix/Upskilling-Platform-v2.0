@@ -1,275 +1,204 @@
 package com.aiupskillingplatform.services.assessment;
 
-import com.aiupskillingplatform.dto.assessment.AssessmentQuestionRequestDTO;
-import com.aiupskillingplatform.dto.assessment.AssessmentQuestionResponseDTO;
+import com.aiupskillingplatform.dto.assessment.AnswerResultResponse;
+import com.aiupskillingplatform.dto.assessment.AssessmentQuestionDTO;
 import com.aiupskillingplatform.dto.assessment.AssessmentSkillDTO;
-import com.aiupskillingplatform.dto.assessment.QuestionDTO;
+import com.aiupskillingplatform.dto.assessment.AssessmentStepResponse;
+import com.aiupskillingplatform.dto.assessment.SubmitAnswerRequest;
 import com.aiupskillingplatform.entities.Question;
 import com.aiupskillingplatform.entities.Skill;
 import com.aiupskillingplatform.entities.User;
 import com.aiupskillingplatform.entities.UserSkillMastery;
-import com.aiupskillingplatform.enums.UserStatus;
-import com.aiupskillingplatform.repositories.*;
+import com.aiupskillingplatform.repositories.QuestionRepository;
+import com.aiupskillingplatform.repositories.SkillRepository;
+import com.aiupskillingplatform.repositories.UserRepository;
+import com.aiupskillingplatform.repositories.UserSkillMasteryRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AssessmentService {
 
-    /**
-     * Fixed 12 assessment skills in deterministic order:
-     * - First 6 skills: The initial root nodes of each of the 6 skill graphs.
-     * - Next 6 skills: Follow-up nodes from each skill graph to complete 12 questions.
-     */
     private static final Map<String, List<String>> TRACK_ASSESSMENT_SKILLS = Map.of(
             "backend-development", List.of(
-                    // 12 root nodes (6 + 6)for the start of assessment
-                    "variables-data-types",
-                    "classes-objects",
-                    "list-set-map",
-                    "relational-database-concepts",
-                    "how-internet-works",
-                    "spring-framework-ioc",
-                    "operators-expressions",
-                    "encapsulation",
-                    "hashmap-internals",
-                    "sql-fundamentals",
-                    "client-server-architecture",
-                    "dependency-injection-spring-beans"
-            )
-    );
+                    "variables-data-types", "classes-objects", "list-set-map",
+                    "relational-database-concepts", "how-internet-works", "spring-framework-ioc",
+                    "operators-expressions", "encapsulation", "hashmap-internals",
+                    "sql-fundamentals", "client-server-architecture", "dependency-injection-spring-beans"));
+
+    private static final String LOCKED = "LOCKED";
+    private static final String UNLOCKED = "UNLOCKED";
 
     private final QuestionRepository questionRepository;
     private final SkillRepository skillRepository;
     private final UserRepository userRepository;
-    private final UserSkillMasteryRepository userSkillMasteryRepository;
+    private final UserSkillMasteryRepository masteryRepository;
     private final ObjectMapper objectMapper;
 
-    @Transactional
-    public AssessmentQuestionResponseDTO getNextQuestion(AssessmentQuestionRequestDTO request, Authentication authentication) {
-        return getNextQuestion(null, request, authentication);
+    // Starts assessment and returns initial question
+    @Transactional(readOnly = true)
+    public AssessmentStepResponse start(String trackSlug, String difficulty, Authentication auth) {
+        List<String> slugs = skillsForTrack(trackSlug);
+        User user = currentUser(auth);
+        return buildStep(slugs, 0, normalizeDifficulty(difficulty), user);
     }
 
+    // Grades submitted answer and advances to next question
     @Transactional
-    public AssessmentQuestionResponseDTO getNextQuestion(String trackSlug, AssessmentQuestionRequestDTO request, Authentication authentication) {
-        if (request == null) {
-            request = new AssessmentQuestionRequestDTO();
+    public AnswerResultResponse submitAnswer(String trackSlug, SubmitAnswerRequest req, Authentication auth) {
+        List<String> slugs = skillsForTrack(trackSlug);
+        User user = currentUser(auth);
+
+        Question question = questionRepository.findById(req.questionId())
+                .orElseThrow(() -> notFound("Question not found"));
+
+        Skill skill = questionRepository.findSkillsByQuestionId(question.getId()).stream()
+                .findFirst()
+                .orElseThrow(() -> notFound("Question is not linked to a skill"));
+
+        int answeredIndex = slugs.indexOf(skill.getSlug());
+        if (answeredIndex < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Question does not belong to this assessment");
         }
 
-        // 1. Resolve Track Slug (defaults to backend-development)
-        String targetSlug = (trackSlug != null && !trackSlug.isBlank()) ? trackSlug : request.getTrackSlug();
-        if (targetSlug == null || targetSlug.isBlank()) {
-            targetSlug = "backend-development";
+        boolean correct = isCorrect(question, req.selectedAnswer());
+        if (correct) {
+            unlockIfLocked(user, skill);
         }
 
-        List<String> skillSlugs = TRACK_ASSESSMENT_SKILLS.getOrDefault(targetSlug, TRACK_ASSESSMENT_SKILLS.get("backend-development"));
-        int totalQuestions = skillSlugs.size();
+        AssessmentStepResponse next =
+                buildStep(slugs, answeredIndex + 1, normalizeDifficulty(req.difficulty()), user);
 
-        Integer correctAns = request.getCorrectAns();
-        if (correctAns == null) {
-            correctAns = 0; // 0 = Assessment just started
+        return new AnswerResultResponse(correct, question.getCorrectAnswer(), question.getExplanation(), next);
+    }
+
+    // Builds step response for a given index in sequence
+    private AssessmentStepResponse buildStep(List<String> slugs, int index, String difficulty, User user) {
+        int total = slugs.size();
+
+        if (index >= total) {
+            return new AssessmentStepResponse(total, total, total, true, null, null,
+                    "Assessment completed successfully.");
         }
 
-        // 2. Resolve User
-        User user = resolveUser(request.getUserId(), authentication);
+        Skill skill = skillRepository.findBySlugAndActiveTrue(slugs.get(index))
+                .orElseThrow(() -> notFound("Skill not found: " + slugs.get(index)));
 
-        // 3. If correct_ans == 1 (previous answered correctly), update skill status to UNLOCKED
-        if (correctAns == 1) {
-            Skill answeredSkill = resolveAnsweredSkill(request, skillSlugs);
-            if (answeredSkill != null && user != null) {
-                unlockSkillForUser(user, answeredSkill);
-            }
-        }
-
-        // 4. Determine next index (O(1) calculation)
-        int nextIndex = determineNextIndex(correctAns, request, skillSlugs);
-
-        // 5. If assessment reached the end (all 12 questions completed)
-        if (nextIndex >= totalQuestions) {
-            return AssessmentQuestionResponseDTO.builder()
-                    .questionIndex(totalQuestions)
-                    .questionNumber(totalQuestions)
-                    .totalQuestions(totalQuestions)
-                    .isCompleted(true)
-                    .skill(null)
-                    .question(null)
-                    .message("Assessment completed successfully. All initial skill graph nodes have been evaluated.")
-                    .build();
-        }
-
-        // 6. Direct O(1) lookup of the next skill slug
-        String nextSkillSlug = skillSlugs.get(nextIndex);
-        Skill nextSkill = skillRepository.findBySlugAndActiveTrue(nextSkillSlug)
-                .orElseThrow(() -> new EntityNotFoundException("Skill not found for slug: " + nextSkillSlug));
-
-        // 7. Fetch question for skill with requested difficulty
-        String difficulty = normalizeDifficulty(request.getDifficulty());
-        Question question = fetchQuestionForSkill(nextSkill, difficulty);
-
-        Object parsedOptions = (question != null) ? parseOptionData(question.getOptionData()) : Collections.emptyMap();
-        String userSkillStatus = (user != null) ? getSkillStatusForUser(user.getId(), nextSkill.getId()) : "UNLOCKED";
+        Question question = pickQuestion(skill, difficulty)
+                .orElseThrow(() -> notFound("No questions available for skill: " + skill.getSlug()));
 
         AssessmentSkillDTO skillDTO = new AssessmentSkillDTO(
-                nextSkill.getId(),
-                nextSkill.getName(),
-                nextSkill.getSlug(),
-                nextSkill.getCategory() != null ? nextSkill.getCategory().getName() : null,
-                nextSkill.getCategory() != null ? nextSkill.getCategory().getId() : null,
-                userSkillStatus
-        );
+                skill.getId(), skill.getName(), skill.getSlug(),
+                skill.getCategory() != null ? skill.getCategory().getName() : null,
+                skill.getCategory() != null ? skill.getCategory().getId() : null,
+                statusFor(user, skill));
 
-        QuestionDTO questionDTO = (question != null) ? new QuestionDTO(
-                question.getId(),
-                question.getQuestionText(),
-                question.getQuestionType(),
-                parsedOptions,
-                question.getDifficulty(),
-                question.getCorrectAnswer(),
-                question.getExplanation()
-        ) : null;
+        AssessmentQuestionDTO questionDTO = new AssessmentQuestionDTO(
+                question.getId(), question.getQuestionText(), question.getQuestionType(),
+                parseOptions(question.getOptionData()), question.getDifficulty());
 
-        return AssessmentQuestionResponseDTO.builder()
-                .questionIndex(nextIndex)
-                .questionNumber(nextIndex + 1)
-                .totalQuestions(totalQuestions)
-                .isCompleted(false)
-                .skill(skillDTO)
-                .question(questionDTO)
-                .message(String.format("Question %d of %d fetched successfully", nextIndex + 1, totalQuestions))
-                .build();
+        return new AssessmentStepResponse(index, index + 1, total, false, skillDTO, questionDTO,
+                "Question %d of %d".formatted(index + 1, total));
     }
 
-    public List<String> getAssessmentSkillSlugs(String trackSlug) {
-        String slug = (trackSlug != null && !trackSlug.isBlank()) ? trackSlug : "backend-development";
-        return TRACK_ASSESSMENT_SKILLS.getOrDefault(slug, TRACK_ASSESSMENT_SKILLS.get("backend-development"));
+    // Retrieves list of skill slugs for track
+    private List<String> skillsForTrack(String trackSlug) {
+        List<String> slugs = TRACK_ASSESSMENT_SKILLS.get(trackSlug);
+        if (slugs == null) throw notFound("Unknown track: " + trackSlug);
+        return slugs;
     }
 
-    private Skill resolveAnsweredSkill(AssessmentQuestionRequestDTO request, List<String> skillSlugs) {
-        if (request.getPreviousSkillId() != null) {
-            return skillRepository.findById(request.getPreviousSkillId()).orElse(null);
+    // Resolves authenticated user from security context
+    private User currentUser(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
-        if (request.getPreviousQuestionId() != null) {
-            List<Skill> skills = questionRepository.findSkillsByQuestionId(request.getPreviousQuestionId());
-            if (!skills.isEmpty()) {
-                return skills.get(0);
-            }
-        }
-        if (request.getQuestionIndex() != null && request.getQuestionIndex() >= 0 && request.getQuestionIndex() < skillSlugs.size()) {
-            String slug = skillSlugs.get(request.getQuestionIndex());
-            return skillRepository.findBySlugAndActiveTrue(slug).orElse(null);
-        }
-        return null;
+        return userRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
     }
 
-    private void unlockSkillForUser(User user, Skill skill) {
-        UserSkillMastery mastery = userSkillMasteryRepository
-                .findByUserIdAndSkillId(user.getId(), skill.getId())
+    // Checks if selected answer matches correct answer
+    private boolean isCorrect(Question q, String selected) {
+        return q.getCorrectAnswer() != null
+                && selected != null
+                && q.getCorrectAnswer().trim().equalsIgnoreCase(selected.trim());
+    }
+
+    // Unlocks skill if currently locked or not started
+    private void unlockIfLocked(User user, Skill skill) {
+        UserSkillMastery mastery = masteryRepository.findByUserIdAndSkillId(user.getId(), skill.getId())
                 .orElseGet(() -> {
-                    UserSkillMastery newMastery = new UserSkillMastery();
-                    newMastery.setUser(user);
-                    newMastery.setSkill(skill);
-                    newMastery.setMasteryScore(0.0);
-                    newMastery.setConfidenceScore(0.0);
-                    newMastery.setEvidenceCount(0);
-                    newMastery.setCreatedAt(Instant.now());
-                    return newMastery;
+                    UserSkillMastery m = new UserSkillMastery();
+                    m.setUser(user);
+                    m.setSkill(skill);
+                    m.setMasteryScore(0.0);
+                    m.setConfidenceScore(0.0);
+                    m.setEvidenceCount(0);
+                    m.setStatus(LOCKED);
+                    m.setCreatedAt(Instant.now());
+                    return m;
                 });
 
-        mastery.setStatus("UNLOCKED");
-        mastery.setUpdatedAt(Instant.now());
-        userSkillMasteryRepository.save(mastery);
-        log.info("Skill {} ({}) status set to UNLOCKED for user {}", skill.getName(), skill.getId(), user.getEmail());
+        if (mastery.getStatus() == null || LOCKED.equals(mastery.getStatus())) {
+            mastery.setStatus(UNLOCKED);
+            mastery.setUpdatedAt(Instant.now());
+            masteryRepository.save(mastery);
+            log.info("Skill {} unlocked for user {}", skill.getSlug(), user.getId());
+        }
     }
 
-    private int determineNextIndex(Integer correctAns, AssessmentQuestionRequestDTO request, List<String> skillSlugs) {
-        if (correctAns == 0) {
-            return 0;
-        }
-
-        if (request.getQuestionIndex() != null && request.getQuestionIndex() >= 0) {
-            return request.getQuestionIndex() + 1;
-        }
-
-        if (request.getPreviousSkillId() != null) {
-            Optional<Skill> prevSkill = skillRepository.findById(request.getPreviousSkillId());
-            if (prevSkill.isPresent()) {
-                int idx = skillSlugs.indexOf(prevSkill.get().getSlug());
-                if (idx >= 0) {
-                    return idx + 1;
-                }
-            }
-        }
-
-        return 1;
+    // Returns user's status for a skill
+    private String statusFor(User user, Skill skill) {
+        return masteryRepository.findByUserIdAndSkillId(user.getId(), skill.getId())
+                .map(m -> m.getStatus() != null ? m.getStatus() : LOCKED)
+                .orElse(LOCKED);
     }
 
-    private String getSkillStatusForUser(UUID userId, UUID skillId) {
-        return userSkillMasteryRepository.findByUserIdAndSkillId(userId, skillId)
-                .map(m -> m.getStatus() != null ? m.getStatus() : "LOCKED")
-                .orElse("UNLOCKED");
+    // Picks a question matching difficulty with fallback to any difficulty
+    private Optional<Question> pickQuestion(Skill skill, String difficulty) {
+        List<Question> pool = questionRepository.findBySkillIdAndDifficulty(skill.getId(), difficulty);
+        if (pool.isEmpty()) pool = questionRepository.findBySkillId(skill.getId());
+        if (pool.isEmpty()) return Optional.empty();
+        return Optional.of(pool.get(ThreadLocalRandom.current().nextInt(pool.size())));
     }
 
+    // Normalizes difficulty string to BEGINNER, MEDIUM, or HARD
     private String normalizeDifficulty(String difficulty) {
-        if (difficulty == null || difficulty.isBlank()) {
-            return "BEGINNER";
-        }
-        String upper = difficulty.trim().toUpperCase();
-        return switch (upper) {
+        if (difficulty == null || difficulty.isBlank()) return "BEGINNER";
+        return switch (difficulty.trim().toUpperCase()) {
             case "BEGINNER", "EASY", "LOW" -> "BEGINNER";
             case "MEDIUM", "INTERMEDIATE", "MID" -> "MEDIUM";
             case "HARD", "ADVANCED", "DIFFICULT" -> "HARD";
-            default -> upper;
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid difficulty");
         };
     }
 
-    private Question fetchQuestionForSkill(Skill skill, String difficulty) {
-        List<Question> questions = questionRepository.findBySkillIdAndDifficulty(skill.getId(), difficulty);
-        if (!questions.isEmpty()) {
-            return questions.get(0);
-        }
-        questions = questionRepository.findBySkillId(skill.getId());
-        if (!questions.isEmpty()) {
-            return questions.get(0);
-        }
-        return null;
-    }
-
-    private Object parseOptionData(String optionData) {
-        if (optionData == null || optionData.isBlank()) {
-            return Collections.emptyMap();
-        }
+    // Parses JSON option data into key-value map
+    private Object parseOptions(String optionData) {
+        if (optionData == null || optionData.isBlank()) return Collections.emptyMap();
         try {
             return objectMapper.readValue(optionData, Object.class);
         } catch (Exception e) {
+            log.warn("Invalid option JSON, returning raw string");
             return optionData;
         }
     }
 
-    private User resolveUser(UUID requestUserId, Authentication authentication) {
-        if (requestUserId != null) {
-            return userRepository.findById(requestUserId)
-                    .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + requestUserId));
-        }
-        if (authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getPrincipal())) {
-            String email = authentication.getName();
-            Optional<User> userOpt = userRepository.findByEmail(email);
-            if (userOpt.isPresent()) {
-                return userOpt.get();
-            }
-        }
-        return userRepository.findAll().stream()
-                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
-                .findFirst()
-                .orElse(null);
+    // Returns 404 response exception
+    private ResponseStatusException notFound(String msg) {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, msg);
     }
 }
