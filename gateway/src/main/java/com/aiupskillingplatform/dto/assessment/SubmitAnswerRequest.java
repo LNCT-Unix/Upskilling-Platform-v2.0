@@ -21,3 +21,4 @@ public record SubmitAnswerRequest(
         @JsonProperty("difficulty")
         String difficulty
 ) {}
+

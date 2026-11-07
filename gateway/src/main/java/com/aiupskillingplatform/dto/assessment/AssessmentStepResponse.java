@@ -10,3 +10,4 @@ public record AssessmentStepResponse(
         AssessmentQuestionDTO question,
         String message
 ) {}
+
