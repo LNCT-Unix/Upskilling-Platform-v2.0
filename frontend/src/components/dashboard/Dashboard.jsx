@@ -1,4 +1,5 @@
 import { useState } from "react";
+import SkillGraph from "../skillgraph/SkillGraph";
 
 // The items shown on the top bar
 const NAV_ITEMS = ["Dashboard", "Take IRT Test", "View Skill Graph"];
@@ -50,7 +51,9 @@ function Dashboard() {
           />
         )}
         {activeTab === "Take IRT Test" && <Page title="Take IRT Test" text="Your test questions will show up here." />}
-        {activeTab === "View Skill Graph" && <Page title="Skill Graph" text="Your skill graph will show up here." />}
+        {activeTab === "View Skill Graph" && (
+          <SkillGraph onStartAssessment={() => setActiveTab("Take IRT Test")} />
+        )}
         {activeTab === "Test Report" && <Page title="Test Report" text="Your test report will show up here." />}
         {activeTab === "Roadmap" && <Page title="Roadmap Path" text="Your roadmap will show up here." />}
       </main>
