@@ -18,6 +18,7 @@ function Signup() {
   e.preventDefault();
   setError("");
   setLoading(true);
+  navigate("/dashboard");
 
   try{
     const res=await fetch("apan ko yaha pe apna signup route dalna hai",{

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import logo from '../../assets/octobyte-logo.jpeg';
 import heroFemale from '../../assets/hero-female.jpeg';
@@ -41,6 +42,7 @@ const HeroIllustration = () => (
 
 
 export default function Landing() {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-[#F7F8FC] text-slate-800 font-sans antialiased flex flex-col justify-between">
       
@@ -67,10 +69,16 @@ export default function Landing() {
 
             {/* Auth options / Get Started / Sign Up */}
             <div className="flex items-center gap-4 sm:gap-6">
-              <a href="#login" className="text-sm font-semibold text-slate-700 hover:text-[#7056ED] transition-colors hidden sm:block">
+              <button
+                onClick={() => navigate('/login')}
+                className="text-sm font-semibold text-slate-700 hover:text-[#7056ED] transition-colors hidden sm:block"
+              >
                 Sign In
-              </a>
-              <button className="bg-[#7056ED] hover:bg-[#5f44e2] text-white font-semibold text-sm px-6 py-2.5 rounded-full shadow-md shadow-purple-500/20 hover:shadow-lg transition-all flex items-center gap-1.5">
+              </button>
+              <button
+                onClick={() => navigate('/signup')}
+                className="bg-[#7056ED] hover:bg-[#5f44e2] text-white font-semibold text-sm px-6 py-2.5 rounded-full shadow-md shadow-purple-500/20 hover:shadow-lg transition-all flex items-center gap-1.5"
+              >
                 <span>Get started / Sign Up</span>
               </button>
             </div>
@@ -95,7 +103,10 @@ export default function Landing() {
                 </p>
 
                 <div className="pt-2">
-                  <button className="bg-[#7056ED] hover:bg-[#5f44e2] text-white font-semibold text-base px-7 py-3.5 rounded-full shadow-lg shadow-purple-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2">
+                  <button
+                    onClick={() => navigate('/signup')}
+                    className="bg-[#7056ED] hover:bg-[#5f44e2] text-white font-semibold text-base px-7 py-3.5 rounded-full shadow-lg shadow-purple-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                  >
                     <span>Start for free</span>
                     <ArrowRight className="w-4 h-4 stroke-[2.5]" />
                   </button>
@@ -304,7 +315,7 @@ export default function Landing() {
                 <li><a href="#home" className="hover:text-[#7056ED] transition-colors">Home</a></li>
                 <li><a href="#how-it-works" className="hover:text-[#7056ED] transition-colors">How it works</a></li>
                 <li><a href="#features" className="hover:text-[#7056ED] transition-colors">Features</a></li>
-                <li><a href="#login" className="hover:text-[#7056ED] transition-colors">Sign In</a></li>
+                <li><button onClick={() => navigate('/login')} className="hover:text-[#7056ED] transition-colors text-left">Sign In</button></li>
               </ul>
             </div>
 
