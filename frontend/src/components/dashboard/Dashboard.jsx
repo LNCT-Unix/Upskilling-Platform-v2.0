@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SkillGraph from "../skillgraph/SkillGraph";
+import Assessment from "../assessment/Assessment";
 import { clearAuthSession, isAuthenticated, getCurrentUser } from "../../api/auth";
 
 // The items shown on the top bar
@@ -39,7 +40,13 @@ function Dashboard() {
           {NAV_ITEMS.map((item) => (
             <button
               key={item}
-              onClick={() => setActiveTab(item)}
+              onClick={() => {
+                if (item === "Take IRT Test") {
+                  navigate("/assessment");
+                } else {
+                  setActiveTab(item);
+                }
+              }}
               className={
                 activeTab === item
                   ? "border-b-2 border-violet-600 pb-1 font-semibold text-violet-600 cursor-pointer"
@@ -75,9 +82,11 @@ function Dashboard() {
             setActiveTab={setActiveTab}
           />
         )}
-        {activeTab === "Take IRT Test" && <Page title="Take IRT Test" text="Your test questions will show up here." />}
+        {activeTab === "Take IRT Test" && (
+          <Assessment />
+        )}
         {activeTab === "View Skill Graph" && (
-          <SkillGraph onStartAssessment={() => setActiveTab("Take IRT Test")} />
+          <SkillGraph onStartAssessment={() => navigate("/assessment")} />
         )}
         {activeTab === "Test Report" && <Page title="Test Report" text="Your test report will show up here." />}
         {activeTab === "Roadmap" && <Page title="Roadmap Path" text="Your roadmap will show up here." />}
@@ -115,7 +124,7 @@ function Home({ lastScore, hasTakenTest, setActiveTab }) {
           </p>
           <button
             onClick={() => setActiveTab("Take IRT Test")}
-            className="rounded-full bg-violet-600 py-2 font-semibold text-white hover:bg-violet-700"
+            className="rounded-full bg-violet-600 py-2 font-semibold text-white hover:bg-violet-700 cursor-pointer"
           >
             Start assessment
           </button>
