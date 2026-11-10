@@ -137,21 +137,22 @@ public class AssessmentService {
                 && q.getCorrectAnswer().trim().equalsIgnoreCase(selected.trim());
     }
 
-    // Unlocks skill if currently locked or not started
+    // Unlocks skill if currently locked or not assessed by the User whos giving test
     private void unlockIfLocked(User user, Skill skill) {
+        //Find the row in table
         UserSkillMastery mastery = masteryRepository.findByUserIdAndSkillId(user.getId(), skill.getId())
                 .orElseGet(() -> {
                     UserSkillMastery m = new UserSkillMastery();
                     m.setUser(user);
                     m.setSkill(skill);
-                    m.setMasteryScore(0.0);
-                    m.setConfidenceScore(0.0);
-                    m.setEvidenceCount(0);
+                    m.setMasteryScore(0.0); //Ignored
+                    m.setConfidenceScore(0.0);//Ignored
+                    m.setEvidenceCount(0);//Ignored
                     m.setStatus(LOCKED);
                     m.setCreatedAt(Instant.now());
                     return m;
                 });
-
+            //Checks if the skill status is empty(null) or skill status is LOCKED, if it is then it unlocks it and updates the status.
         if (mastery.getStatus() == null || LOCKED.equals(mastery.getStatus())) {
             mastery.setStatus(UNLOCKED);
             mastery.setUpdatedAt(Instant.now());

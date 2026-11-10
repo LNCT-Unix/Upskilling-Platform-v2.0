@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require("cors");
 require("dotenv").config();
 
 const app = express();
@@ -6,6 +7,7 @@ const app = express();
 const generateSkillGraph = require("./services/aiService.js");
 const validateSkillGraph = require("./middlewares/validateSkillGraph.js");
 
+app.use(cors());
 app.use(express.json());
 
 app.use((req, res,next) => {
