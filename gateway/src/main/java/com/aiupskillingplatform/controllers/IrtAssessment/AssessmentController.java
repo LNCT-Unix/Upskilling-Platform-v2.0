@@ -17,7 +17,7 @@ public class AssessmentController {
 
     private final AssessmentService assessmentService;
 
-    // Read-only: returns the first question. Safe for GET.
+    // Read-only: returns the first question.
     @GetMapping("/start")
     public ResponseEntity<AssessmentStepResponse> start(
             @PathVariable String trackSlug,

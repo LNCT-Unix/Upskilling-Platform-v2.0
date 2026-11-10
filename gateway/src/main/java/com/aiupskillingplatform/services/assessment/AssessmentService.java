@@ -51,7 +51,12 @@ public class AssessmentService {
     // Starts assessment and returns initial question
     @Transactional(readOnly = true)
     public AssessmentStepResponse start(String trackSlug, String difficulty, Authentication auth) {
-        List<String> slugs = skillsForTrack(trackSlug);
+        
+        //Load all the skills that will be questioned on using the function from the Track assesment skils map : 
+        // getSkillsForTrack or throw exception
+        List<String> slugs = getSkillsForTrack(trackSlug); 
+        
+        //Authenticate the user (token validation)
         User user = currentUser(auth);
         return buildStep(slugs, 0, normalizeDifficulty(difficulty), user);
     }
@@ -59,7 +64,7 @@ public class AssessmentService {
     // Grades submitted answer and advances to next question
     @Transactional
     public AnswerResultResponse submitAnswer(String trackSlug, SubmitAnswerRequest req, Authentication auth) {
-        List<String> slugs = skillsForTrack(trackSlug);
+        List<String> slugs = getSkillsForTrack(trackSlug);
         User user = currentUser(auth);
 
         Question question = questionRepository.findById(req.questionId())
@@ -88,7 +93,8 @@ public class AssessmentService {
     // Builds step response for a given index in sequence
     private AssessmentStepResponse buildStep(List<String> slugs, int index, String difficulty, User user) {
         int total = slugs.size();
-
+        /*index tracks the number of questions that have been assessed upon and total is the total skills/questions
+        that will be assessed */
         if (index >= total) {
             return new AssessmentStepResponse(total, total, total, true, null, null,
                     "Assessment completed successfully.");
@@ -115,7 +121,7 @@ public class AssessmentService {
     }
 
     // Retrieves list of skill slugs for track
-    private List<String> skillsForTrack(String trackSlug) {
+    private List<String> getSkillsForTrack(String trackSlug) {
         List<String> slugs = TRACK_ASSESSMENT_SKILLS.get(trackSlug);
         if (slugs == null) throw notFound("Unknown track: " + trackSlug);
         return slugs;
