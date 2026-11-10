@@ -19,7 +19,7 @@ async function handleLogin(e){
 
        try{
         //api calling
-        const res=await fetch("yahan pe apna login ka api dalo ", {
+        const res=await fetch("https://strings-commitments-ampland-white.trycloudflare.com/api/auth/login ", {
           method :"POST",
           headers:{
             "Content-Type":"application/json"
