@@ -1,5 +1,6 @@
 import {useState} from "react"
 import {useNavigate,Link} from "react-router-dom";
+import { API_BASE_URL } from "../../api/config";
 
 
 
@@ -19,7 +20,7 @@ async function handleLogin(e){
 
        try{
         //api calling
-        const res=await fetch("https://strings-commitments-ampland-white.trycloudflare.com/api/auth/login ", {
+        const res=await fetch(`${API_BASE_URL}/auth/login`, {
           method :"POST",
           headers:{
             "Content-Type":"application/json"

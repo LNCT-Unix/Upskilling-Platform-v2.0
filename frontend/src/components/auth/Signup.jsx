@@ -4,6 +4,7 @@
 
 import {useState} from "react";
 import {useNavigate, Link} from "react-router-dom"
+import { API_BASE_URL } from "../../api/config";
 function Signup() {
   const navigate=useNavigate();
 
@@ -21,7 +22,7 @@ function Signup() {
   navigate("/dashboard");
 
   try{
-    const res=await fetch("https://strings-commitments-ampland-white.trycloudflare.com/api/auth/register",{
+    const res=await fetch(`${API_BASE_URL}/auth/register`,{
       method :"POST",
       headers:{
         "Content-Type":"application/json",
