@@ -29,10 +29,21 @@ async function handleLogin(e){
 
         });
         const data=await res.json();
-        if(!res.ok){
-          setError(data.message || "login failed")
-          return ;
-        }
+        if (!res.ok) {
+    setError(data.message || data.detail || "Login failed");
+    return;
+}
+
+  if (!data.accessToken) {
+
+    setError("Access token not received");
+     return;
+}
+
+
+  localStorage.setItem("accessToken", data.accessToken);
+
+  localStorage.setItem("user", JSON.stringify(data.user));
         setSuccess(true);
 
        } catch(e){
@@ -50,10 +61,10 @@ async function handleLogin(e){
             <h1 className="text-2xl font-semibold mb-3">Login successful</h1>
             <p className="text-sm text-gray-500 mb-6">welcome back </p>
             <button
-            onClick={()=>navigate("/logout")}
+            onClick={()=>navigate("/dashboard")}
             className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-md text-sm font-medium transition-colors"
             >
-go to logout
+Go to Dashboard
             </button>
             </div>
         ):(
