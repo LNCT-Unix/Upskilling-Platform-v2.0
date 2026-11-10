@@ -36,9 +36,6 @@ public class Skill {
     @Column(name = "difficulty_level")
     private String difficultyLevel;
 
-    @Column(name = "estimated_minutes")
-    private Integer estimatedMinutes;
-
     @Column(name = "sort_order")
     private Integer sortOrder;
 

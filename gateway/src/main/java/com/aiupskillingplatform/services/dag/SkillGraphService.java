@@ -24,36 +24,22 @@ public class SkillGraphService {
     private final SkillDependencyRepository dependencyRepository;
     private final TrackRepository trackRepository;
 
-    public SkillGraphResponseDTO getInitialGraph(UUID trackId) {
+    public SkillGraphResponseDTO getSkillGraph(UUID trackId) {
         validateTrack(trackId);
 
         List<Skill> skills = getTopologicalOrder(trackId);
         List<SkillDependency> dependencies = dependencyRepository.findByTrackId(trackId);
 
-        Map<UUID, List<String>> prereqNamesMap = new HashMap<>();
-        for (SkillDependency dependency : dependencies) {
-            Skill prereq = dependency.getPrerequisiteSkill();
-            Skill dep = dependency.getDependentSkill();
-            if (prereq.isActive() && dep.isActive()) {
-                prereqNamesMap.computeIfAbsent(dep.getId(), k -> new ArrayList<>()).add(prereq.getName());
-            }
-        }
-
         List<SkillGraphNodeDTO> nodes = new ArrayList<>();
         for (Skill skill : skills) {
             String categoryName = skill.getCategory() != null ? skill.getCategory().getName() : null;
-            List<String> prereqNames = prereqNamesMap.getOrDefault(skill.getId(), Collections.emptyList());
-
             nodes.add(new SkillGraphNodeDTO(
                     skill.getId(),
                     skill.getName(),
                     skill.getSlug(),
                     skill.getDifficultyLevel(),
                     skill.getSortOrder(),
-                    categoryName,
-                    null,
-                    null,
-                    prereqNames
+                    categoryName
             ));
         }
 

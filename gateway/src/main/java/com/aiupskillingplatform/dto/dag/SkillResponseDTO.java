@@ -8,7 +8,6 @@ public record SkillResponseDTO(
         String slug,
         String description,
         String difficultyLevel,
-        Integer estimatedMinutes,
         Integer sortOrder,
         boolean active
 ) {}

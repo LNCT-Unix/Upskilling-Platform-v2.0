@@ -86,7 +86,6 @@ public class SkillDependencyService {
                         skill.getSlug(),
                         skill.getDescription(),
                         skill.getDifficultyLevel(),
-                        skill.getEstimatedMinutes(),
                         skill.getSortOrder(),
                         skill.isActive()
                 ));
