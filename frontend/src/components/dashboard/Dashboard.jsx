@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import SkillGraph from "../skillgraph/SkillGraph";
+import { clearAuthSession, isAuthenticated, getCurrentUser } from "../../api/auth";
 
 // The items shown on the top bar
 const NAV_ITEMS = ["Dashboard", "Take IRT Test", "View Skill Graph"];
 
 function Dashboard() {
+  const navigate = useNavigate();
   // Which page is open right now
   const [activeTab, setActiveTab] = useState("Dashboard");
 
@@ -13,6 +16,18 @@ function Dashboard() {
 
   // Becomes true after the first test is finished (set it from your backend later)
   const [hasTakenTest, setHasTakenTest] = useState(false);
+
+  const loggedIn = isAuthenticated();
+  const currentUser = getCurrentUser();
+
+  function handleAuthClick() {
+    if (loggedIn) {
+      clearAuthSession();
+      navigate("/login");
+    } else {
+      navigate("/login");
+    }
+  }
 
   return (
     <div className="flex h-screen flex-col bg-slate-50 text-slate-900">
@@ -27,8 +42,8 @@ function Dashboard() {
               onClick={() => setActiveTab(item)}
               className={
                 activeTab === item
-                  ? "border-b-2 border-violet-600 pb-1 font-semibold text-violet-600"
-                  : "pb-1 font-medium text-slate-600 hover:text-violet-600"
+                  ? "border-b-2 border-violet-600 pb-1 font-semibold text-violet-600 cursor-pointer"
+                  : "pb-1 font-medium text-slate-600 hover:text-violet-600 cursor-pointer"
               }
             >
               {item}
@@ -36,9 +51,19 @@ function Dashboard() {
           ))}
         </nav>
 
-        <button className="rounded-full bg-violet-600 px-5 py-2 font-semibold text-white hover:bg-violet-700">
-          Sign In
-        </button>
+        <div className="flex items-center gap-4">
+          {loggedIn && currentUser?.fullName && (
+            <span className="text-sm font-medium text-slate-600">
+              Hi, {currentUser.fullName}
+            </span>
+          )}
+          <button
+            onClick={handleAuthClick}
+            className="rounded-full bg-violet-600 px-5 py-2 font-semibold text-white hover:bg-violet-700 cursor-pointer"
+          >
+            {loggedIn ? "Sign Out" : "Sign In"}
+          </button>
+        </div>
       </header>
 
       {/* ---------- PAGE CONTENT ---------- */}
