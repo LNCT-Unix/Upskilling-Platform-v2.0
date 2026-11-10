@@ -21,7 +21,7 @@ function Signup() {
   navigate("/dashboard");
 
   try{
-    const res=await fetch("apan ko yaha pe apna signup route dalna hai",{
+    const res=await fetch("https://strings-commitments-ampland-white.trycloudflare.com/api/auth/register",{
       method :"POST",
       headers:{
         "Content-Type":"application/json",
