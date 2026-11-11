@@ -24,7 +24,7 @@ An adaptive technical upskilling platform that maps learner proficiency across a
 
 ## System Architecture
 
-The platform is organized into three runnable services backed by PostgreSQL:
+The core platform connects the React frontend, Spring Boot gateway, and PostgreSQL:
 
 ```mermaid
 flowchart TB
@@ -48,20 +48,12 @@ flowchart TB
         PG[("users, tracks, skill_categories,\nskills, skill_dependencies,\nquestions, question_skills,\nuser_skill_mastery,\nassessment_attempts, assessment_responses")]
     end
 
-    subgraph ASYNC["AsyncFunctions — Node.js + Express 5 (:3000)"]
-        ExpressApp["POST /api/skill-graph"]
-        ValMW["validateSkillGraph Middleware"]
-        AISvc["aiService.generateSkillGraph"]
-    end
-
     User --> Router
     Router --> Proxy
     Proxy --> Sec
     Sec --> AuthCtrl & GraphCtrl & AssessCtrl & HealthCtrl
     AuthCtrl & GraphCtrl & AssessCtrl --> Services
     Services --> PG
-    User -. "Direct / Service Call" .-> ExpressApp
-    ExpressApp --> ValMW --> AISvc
 ```
 
 ---
@@ -264,7 +256,13 @@ sequenceDiagram
     Note over UI,Svc: When index >= totalQuestions (12), next.completed = true
 ```
 
-> For the detailed internal flowchart of `AssessmentService.submitAnswer`, see [Documentation/Gateway/AssessmentArchitecture.md](Documentation/Gateway/AssessmentArchitecture.md).
+**How the assessment works (in simple steps):**
+1. **Start**: Client calls `GET /api/tracks/{trackSlug}/assessment/start?difficulty=BEGINNER`. The service authenticates the JWT user, loads the first skill in the 12-skill track list, and picks a random question matching the difficulty (or any available question for that skill if none match).
+2. **Validate & Lookup**: On `POST /api/tracks/{trackSlug}/assessment/answers`, the service verifies the track, authenticated user, `questionId`, and that the question's linked skill belongs to the track's assessment sequence.
+3. **Grade & Unlock**: It compares `selectedAnswer` with `correctAnswer` (case-insensitive, trimmed). If correct, `unlockIfLocked` sets the user's `user_skill_mastery.status` for that skill from `LOCKED` (or new row) to `UNLOCKED`.
+4. **Advance or Finish**: It builds the next question at `answeredIndex + 1` and returns feedback (`correct`, `correctAnswer`, `explanation`) plus `next`. After question 12, `next.completed` is `true` and `next.question` is `null`.
+
+> For the detailed internal flowchart and step-by-step breakdown of `AssessmentService.submitAnswer`, see [Documentation/Gateway/AssessmentArchitecture.md](Documentation/Gateway/AssessmentArchitecture.md).
 
 ---
 
