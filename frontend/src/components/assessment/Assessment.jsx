@@ -203,9 +203,9 @@ export default function Assessment() {
               <div className="text-5xl font-black text-[#7056ED] my-4">{score}</div>
               <p className="text-slate-600 mb-6">Correct: {correct} | Wrong: {wrong}</p>
               <div className="flex justify-center gap-3">
-                <button onClick={startTest} className={button}>Try Again</button>
-                <button onClick={() => navigate('/dashboard')} className="px-7 py-2.5 rounded-full bg-slate-100 font-semibold text-sm cursor-pointer hover:bg-slate-200">
-                  Dashboard
+                <button onClick={() => navigate('/dashboard')} className={button}>Dashboard</button>
+                <button onClick={() => navigate('/skills')} className="px-7 py-2.5 rounded-full bg-slate-100 font-semibold text-sm cursor-pointer hover:bg-slate-200">
+                  View Skill Graph
                 </button>
               </div>
             </div>
