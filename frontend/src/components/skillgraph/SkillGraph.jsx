@@ -1,138 +1,156 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../../api/config";
 import { getAuthToken, clearAuthSession } from "../../api/auth";
 
 const DEFAULT_TRACK_ID = "10000000-0000-0000-0000-000000000001";
 
-// Fixed dimensions for graph nodes and spacing
 const NODE_W = 180;
-const NODE_H = 52;
+const NODE_H = 58;
 const GAP_X = 90;
-const GAP_Y = 24;
-const PADDING = 30;
+const GAP_Y = 28;
+const PADDING = 35;
 
-// Calculate DAG layout coordinates for nodes
+// Calculate DAG layout
 function calculateLayout(nodes, edges) {
-  if (!nodes || nodes.length === 0) {
+  if (!nodes.length) {
     return { layoutNodes: [], width: 0, height: 0 };
   }
 
-  const nodeMap = new Map();
-  nodes.forEach((node) => nodeMap.set(node.id, node));
+  const nodeMap = new Map(nodes.map(node => [node.id, node]));
+  const prereqMap = new Map(nodes.map(node => [node.id, []]));
 
-  // Map each dependent skill to its prerequisite skill IDs
-  // Self-edges and edges with missing nodes are ignored
-  const prereqMap = new Map();
-  nodes.forEach((node) => prereqMap.set(node.id, []));
+  edges.forEach(edge => {
+    const pId = edge.prerequisiteSkillId;
+    const dId = edge.dependentSkillId;
 
-  edges.forEach((edge) => {
-    const { prerequisiteSkillId: pId, dependentSkillId: dId } = edge;
-    if (pId && dId && pId !== dId && nodeMap.has(pId) && nodeMap.has(dId)) {
+    if (pId !== dId && nodeMap.has(pId) && nodeMap.has(dId)) {
       prereqMap.get(dId).push(pId);
     }
   });
 
-  // Column equals the length of the longest chain of prerequisites before this node
-  const colMemo = new Map();
+  const memo = new Map();
 
-  function getColumn(nodeId, visited = new Set()) {
-    if (colMemo.has(nodeId)) return colMemo.get(nodeId);
-    // Visited guard stops recursion if circular dependencies exist in the data
-    if (visited.has(nodeId)) return 0;
-    visited.add(nodeId);
+  function getColumn(id, visiting = new Set()) {
+    if (memo.has(id)) return memo.get(id);
+    if (visiting.has(id)) return 0;
 
-    const prereqs = prereqMap.get(nodeId) || [];
-    if (prereqs.length === 0) {
-      colMemo.set(nodeId, 0);
+    const nextVisiting = new Set(visiting);
+    nextVisiting.add(id);
+
+    const prereqs = prereqMap.get(id) || [];
+
+    if (!prereqs.length) {
+      memo.set(id, 0);
       return 0;
     }
 
-    let maxCol = 0;
-    for (const pid of prereqs) {
-      const parentCol = getColumn(pid, new Set(visited));
-      if (parentCol + 1 > maxCol) maxCol = parentCol + 1;
-    }
+    const column = Math.max(
+      ...prereqs.map(pid => getColumn(pid, nextVisiting) + 1)
+    );
 
-    colMemo.set(nodeId, maxCol);
-    return maxCol;
+    memo.set(id, column);
+    return column;
   }
 
-  // Group nodes by column index
   const columns = [];
-  nodes.forEach((node) => {
-    const colIndex = getColumn(node.id);
-    if (!columns[colIndex]) columns[colIndex] = [];
-    columns[colIndex].push(node);
+
+  nodes.forEach(node => {
+    const col = getColumn(node.id);
+
+    if (!columns[col]) columns[col] = [];
+
+    columns[col].push(node);
   });
 
-  // Sort nodes vertically in each column and calculate x, y coordinates
   const layoutNodes = [];
   let maxRows = 0;
 
-  columns.forEach((colNodes, colIndex) => {
-    if (!colNodes) return;
-    colNodes.sort((a, b) => {
-      const orderA = a.sortOrder ?? 0;
-      const orderB = b.sortOrder ?? 0;
-      if (orderA !== orderB) return orderA - orderB;
-      return (a.name || "").localeCompare(b.name || "");
-    });
+  columns.forEach((column, colIndex) => {
+    if (!column) return;
 
-    if (colNodes.length > maxRows) maxRows = colNodes.length;
+    column.sort((a, b) =>
+      (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+    );
 
-    colNodes.forEach((node, rowIndex) => {
+    maxRows = Math.max(maxRows, column.length);
+
+    column.forEach((node, rowIndex) => {
       layoutNodes.push({
         ...node,
         x: PADDING + colIndex * (NODE_W + GAP_X),
-        y: PADDING + rowIndex * (NODE_H + GAP_Y),
-        col: colIndex,
-        row: rowIndex,
+        y: PADDING + rowIndex * (NODE_H + GAP_Y)
       });
     });
   });
 
-  const totalCols = columns.length;
-  const width = totalCols > 0 ? PADDING * 2 + totalCols * NODE_W + (totalCols - 1) * GAP_X : 0;
-  const height = maxRows > 0 ? PADDING * 2 + maxRows * NODE_H + (maxRows - 1) * GAP_Y : 0;
+  const width =
+    PADDING * 2 +
+    columns.length * NODE_W +
+    (columns.length - 1) * GAP_X;
+
+  const height =
+    PADDING * 2 +
+    maxRows * NODE_H +
+    (maxRows - 1) * GAP_Y;
 
   return { layoutNodes, width, height };
 }
 
-// Truncate long skill names with an ellipsis so they fit inside node boxes
-function truncate(text, maxLength = 20) {
-  if (!text) return "";
-  if (text.length <= maxLength) return text;
-  return text.slice(0, maxLength - 1) + "…";
+// Status colors
+function getNodeColors(node, selected) {
+  const border = selected ? "#7c3aed" : null;
+
+  switch ((node.status || "LOCKED").toUpperCase()) {
+    case "COMPLETED":
+    case "MASTERED":
+      return {
+        fill: "#dcfce7",
+        stroke: border || "#22c55e",
+        text: "#166534"
+      };
+
+    case "UNLOCKED":
+    case "AVAILABLE":
+    case "IN_PROGRESS":
+      return {
+        fill: "#ede9fe",
+        stroke: border || "#a78bfa",
+        text: "#5b21b6"
+      };
+
+    default:
+      return {
+        fill: "#f1f5f9",
+        stroke: border || "#cbd5e1",
+        text: "#64748b"
+      };
+  }
 }
 
-// Determine node styling: only colour by status if node.status actually exists
-function getNodeColors(node, isSelected) {
-  const selectedBorder = isSelected ? "#7c3aed" : null;
-  const strokeWidth = isSelected ? 2 : 1;
+function truncate(value, max = 21) {
+  if (!value) return "";
 
-  if (node.status === "COMPLETED") {
-    return { fill: "#f0fdf4", stroke: selectedBorder || "#86efac", text: "#15803d", strokeWidth };
-  }
-  if (node.status === "IN_PROGRESS" || node.status === "UNLOCKED" || node.status === "AVAILABLE") {
-    return { fill: "#f5f3ff", stroke: selectedBorder || "#c4b5fd", text: "#6d28d9", strokeWidth };
-  }
-  if (node.status === "LOCKED") {
-    return { fill: "#f8fafc", stroke: selectedBorder || "#e2e8f0", text: "#94a3b8", strokeWidth };
-  }
-
-  // Neutral slate palette when status field is not returned
-  return { fill: "#ffffff", stroke: selectedBorder || "#cbd5e1", text: "#334155", strokeWidth };
+  return value.length > max
+    ? value.slice(0, max - 1) + "…"
+    : value;
 }
 
-// Reusable card for states like assessment gate, login required, errors, and empty graph
+// Loading and error card
 function MessageCard({ title, message, buttonText, onButtonClick }) {
   return (
     <div className="flex min-h-[360px] items-center justify-center p-6">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow">
-        <h3 className="text-lg font-bold text-slate-800">{title}</h3>
-        <p className="mt-2 text-sm text-slate-600">{message}</p>
-        {buttonText && onButtonClick && (
+        <h3 className="text-lg font-bold text-slate-800">
+          {title}
+        </h3>
+
+        <p className="mt-2 text-sm text-slate-600">
+          {message}
+        </p>
+
+        {buttonText && (
           <button
             onClick={onButtonClick}
             className="mt-6 rounded-full bg-violet-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 cursor-pointer"
@@ -145,17 +163,16 @@ function MessageCard({ title, message, buttonText, onButtonClick }) {
   );
 }
 
-// Details panel shown below the graph for the currently selected skill
-function SkillDetail({ skill, prerequisiteNames, unlockNames, onStartAssessment, navigate }) {
+// Selected skill details
+function SkillDetail({
+  skill,
+  prerequisiteNames,
+  unlockNames,
+  navigate
+}) {
   if (!skill) return null;
 
-  function handleAssessmentClick() {
-    if (onStartAssessment) {
-      onStartAssessment(skill.name);
-    } else {
-      navigate("/assessment");
-    }
-  }
+  const mastery = Number(skill.masteryScore ?? 0);
 
   return (
     <div className="rounded-2xl bg-white p-6 shadow">
@@ -164,42 +181,62 @@ function SkillDetail({ skill, prerequisiteNames, unlockNames, onStartAssessment,
           <span className="text-xs font-semibold uppercase tracking-wider text-violet-600">
             Selected Skill
           </span>
-          <h3 className="mt-1 text-2xl font-bold text-slate-800">{skill.name}</h3>
+
+          <h3 className="mt-1 text-2xl font-bold text-slate-800">
+            {skill.name}
+          </h3>
         </div>
+
         <button
-          onClick={handleAssessmentClick}
+          onClick={() => navigate("/assessment")}
           className="self-start rounded-full bg-violet-600 px-6 py-2 text-sm font-semibold text-white hover:bg-violet-700 cursor-pointer"
         >
-          Take assessment
+          Take Assessment
         </button>
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl bg-slate-50 p-4">
-          <span className="text-xs font-medium text-slate-500">Category</span>
-          <p className="mt-1 font-semibold text-slate-700">{skill.categoryName || "General"}</p>
-        </div>
-
-        <div className="rounded-xl bg-slate-50 p-4">
-          <span className="text-xs font-medium text-slate-500">Difficulty Level</span>
-          <p className="mt-1 font-semibold text-slate-700 capitalize">
-            {skill.difficultyLevel ? skill.difficultyLevel.toLowerCase() : "Unspecified"}
+          <span className="text-xs text-slate-500">Category</span>
+          <p className="mt-1 font-semibold text-slate-700">
+            {skill.categoryName || "General"}
           </p>
         </div>
 
         <div className="rounded-xl bg-slate-50 p-4">
-          <span className="text-xs font-medium text-slate-500">Prerequisites</span>
-          <p className="mt-1 text-sm font-medium text-slate-700">
-            {prerequisiteNames && prerequisiteNames.length > 0
-              ? prerequisiteNames.join(", ")
-              : "None, you can start here"}
+          <span className="text-xs text-slate-500">Status</span>
+          <p className="mt-1 font-semibold text-slate-700">
+            {skill.status || "LOCKED"}
           </p>
         </div>
 
         <div className="rounded-xl bg-slate-50 p-4">
-          <span className="text-xs font-medium text-slate-500">Unlocks</span>
-          <p className="mt-1 text-sm font-medium text-slate-700">
-            {unlockNames && unlockNames.length > 0 ? unlockNames.join(", ") : "None"}
+          <span className="text-xs text-slate-500">Mastery Score</span>
+          <p className="mt-1 font-semibold text-slate-700">
+            {Math.round(mastery * 100)}%
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-slate-50 p-4">
+          <span className="text-xs text-slate-500">Difficulty</span>
+          <p className="mt-1 font-semibold text-slate-700">
+            {skill.difficultyLevel || "Unspecified"}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="rounded-xl bg-slate-50 p-4">
+          <span className="text-xs text-slate-500">Prerequisites</span>
+          <p className="mt-1 text-sm text-slate-700">
+            {prerequisiteNames.join(", ") || "None"}
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-slate-50 p-4">
+          <span className="text-xs text-slate-500">Unlocks</span>
+          <p className="mt-1 text-sm text-slate-700">
+            {unlockNames.join(", ") || "None"}
           </p>
         </div>
       </div>
@@ -207,107 +244,95 @@ function SkillDetail({ skill, prerequisiteNames, unlockNames, onStartAssessment,
   );
 }
 
-function SkillGraph({ onStartAssessment }) {
+export default function SkillGraph() {
   const navigate = useNavigate();
+
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const token = getAuthToken();
-  const hasAssessment = localStorage.getItem("assessment_completed") === "true";
+  // Fetch latest personalized graph
+  const loadGraph = useCallback(async () => {
+    const token = getAuthToken();
 
-  async function loadGraph() {
-    const currentToken = getAuthToken();
-    if (!currentToken) return;
+    if (!token) {
+      navigate("/login");
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/progress/tracks/${DEFAULT_TRACK_ID}/graph`, {
-        headers: {
-          Authorization: `Bearer ${currentToken}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/progress/tracks/${DEFAULT_TRACK_ID}/graph`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          cache: "no-store"
+        }
+      );
 
-      if (res.status === 401) {
+      if (response.status === 401) {
         clearAuthSession();
         navigate("/login");
         return;
       }
 
-      if (!res.ok) {
-        throw new Error(`Server returned HTTP ${res.status}`);
+      if (!response.ok) {
+        throw new Error(
+          `Unable to fetch graph. HTTP ${response.status}`
+        );
       }
 
-      const data = await res.json();
-      const fetchedNodes = Array.isArray(data?.nodes) ? data.nodes : [];
-      const fetchedEdges = Array.isArray(data?.edges) ? data.edges : [];
+      const data = await response.json();
+
+      const fetchedNodes = Array.isArray(data.nodes)
+        ? data.nodes
+        : [];
+
+      const fetchedEdges = Array.isArray(data.edges)
+        ? data.edges
+        : [];
 
       setNodes(fetchedNodes);
       setEdges(fetchedEdges);
 
-      if (fetchedNodes.length > 0) {
-        setSelectedId(fetchedNodes[0].id);
-      }
+      // Preserve the selected skill after refresh
+      setSelectedId(previousId =>
+        fetchedNodes.some(node => node.id === previousId)
+          ? previousId
+          : fetchedNodes[0]?.id || null
+      );
+
     } catch (err) {
+      console.error("Skill graph error:", err);
       setError(err.message || "Failed to load skill graph");
     } finally {
       setLoading(false);
     }
-  }
+  }, [navigate]);
 
-  // Mount effect: fetch graph only when component mounts and requirements are met
+  // Fetch when graph page opens
   useEffect(() => {
-    if (!hasAssessment || !token) {
-      return;
-    }
     loadGraph();
-  }, [hasAssessment, token]);
+  }, [loadGraph]);
 
-  // Assessment gate
-  if (!hasAssessment) {
-    return (
-      <MessageCard
-        title="Assessment Required"
-        message="Attempt the assessment first to see your skill graph"
-        buttonText="Take Assessment"
-        onButtonClick={() => {
-          if (onStartAssessment) {
-            onStartAssessment();
-          } else {
-            navigate("/assessment");
-          }
-        }}
-      />
-    );
-  }
-
-  // Authentication check
-  if (!token) {
-    return (
-      <MessageCard
-        title="Sign In Required"
-        message="Please sign in to view your skill graph."
-        buttonText="Sign In"
-        onButtonClick={() => navigate("/login")}
-      />
-    );
-  }
-
-  // Loading state
   if (loading) {
     return (
       <div className="flex min-h-[360px] items-center justify-center">
-        <p className="text-sm font-medium text-slate-500">Loading skill graph...</p>
+        <p className="text-sm font-medium text-slate-500">
+          Loading your skill graph...
+        </p>
       </div>
     );
   }
 
-  // Error state
   if (error) {
     return (
       <MessageCard
@@ -319,146 +344,256 @@ function SkillGraph({ onStartAssessment }) {
     );
   }
 
-  // Empty state
-  if (nodes.length === 0) {
+  if (!nodes.length) {
     return (
       <MessageCard
         title="No Skills Found"
-        message="No skills found for this track"
+        message="No skills are available for this learning track."
+        buttonText="Dashboard"
+        onButtonClick={() => navigate("/dashboard")}
       />
     );
   }
 
-  // Calculate layout and node coordinates
-  const { layoutNodes, width, height } = calculateLayout(nodes, edges);
+  const {
+    layoutNodes,
+    width,
+    height
+  } = calculateLayout(nodes, edges);
 
-  const nodeMap = new Map();
-  layoutNodes.forEach((node) => nodeMap.set(node.id, node));
+  const nodeMap = new Map(
+    layoutNodes.map(node => [node.id, node])
+  );
 
-  const selectedNode = nodeMap.get(selectedId) || layoutNodes[0];
+  const selectedNode =
+    nodeMap.get(selectedId) || layoutNodes[0];
 
-  // Resolve prerequisite and unlock names for selected skill
   const prerequisiteNames = edges
-    .filter((edge) => edge.dependentSkillId === selectedNode?.id)
-    .map((edge) => nodeMap.get(edge.prerequisiteSkillId)?.name)
+    .filter(edge =>
+      edge.dependentSkillId === selectedNode?.id
+    )
+    .map(edge =>
+      nodeMap.get(edge.prerequisiteSkillId)?.name
+    )
     .filter(Boolean);
 
   const unlockNames = edges
-    .filter((edge) => edge.prerequisiteSkillId === selectedNode?.id)
-    .map((edge) => nodeMap.get(edge.dependentSkillId)?.name)
+    .filter(edge =>
+      edge.prerequisiteSkillId === selectedNode?.id
+    )
+    .map(edge =>
+      nodeMap.get(edge.dependentSkillId)?.name
+    )
     .filter(Boolean);
 
-  const svgWidth = Math.max(width, 700);
-  const svgHeight = Math.max(height, 350);
+  const masteredCount = nodes.filter(node =>
+    ["COMPLETED", "MASTERED"].includes(
+      (node.status || "").toUpperCase()
+    )
+  ).length;
+
+  const unlockedCount = nodes.filter(node =>
+    ["UNLOCKED", "AVAILABLE", "IN_PROGRESS"].includes(
+      (node.status || "").toUpperCase()
+    )
+  ).length;
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Heading and Hint */}
+
+      {/* Heading and Navigation */}
       <div className="rounded-2xl bg-white p-6 shadow">
-        <h2 className="text-2xl font-bold text-slate-800">My Skill Graph</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Arrows point from a skill to the skills it unlocks. Click a skill to see details.
-        </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">
+              My Skill Graph
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Track your learning progress and skill dependencies.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="rounded-full border border-violet-200 px-5 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50 cursor-pointer"
+            >
+              Dashboard
+            </button>
+
+            <button
+              onClick={loadGraph}
+              className="rounded-full bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-700 cursor-pointer"
+            >
+              Refresh Graph
+            </button>
+          </div>
+        </div>
+
+        {/* Progress Summary */}
+        <div className="mt-6 grid grid-cols-3 gap-3">
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className="text-xs text-slate-500">Total Skills</p>
+            <p className="mt-1 text-2xl font-bold text-slate-800">
+              {nodes.length}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-purple-50 p-4">
+            <p className="text-xs text-slate-500">Unlocked</p>
+            <p className="mt-1 text-2xl font-bold text-purple-700">
+              {unlockedCount}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-green-50 p-4">
+            <p className="text-xs text-slate-500">Mastered</p>
+            <p className="mt-1 text-2xl font-bold text-green-700">
+              {masteredCount}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* SVG DAG Area */}
-      <div className="rounded-2xl bg-white p-6 shadow overflow-x-auto">
-        <svg width={svgWidth} height={svgHeight} className="block select-none">
+      {/* Graph */}
+      <div className="overflow-x-auto rounded-2xl bg-white p-6 shadow">
+        <svg
+          width={Math.max(width, 700)}
+          height={Math.max(height, 350)}
+          className="block select-none"
+        >
           <defs>
             <marker
-              id="arrow-default"
+              id="skill-arrow"
               viewBox="0 0 10 10"
               refX="8"
               refY="5"
               markerWidth="6"
               markerHeight="6"
-              orient="auto-start-reverse"
+              orient="auto"
             >
-              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#cbd5e1" />
+              <path
+                d="M 0 1.5 L 8 5 L 0 8.5 z"
+                fill="#cbd5e1"
+              />
             </marker>
+
             <marker
-              id="arrow-selected"
+              id="selected-arrow"
               viewBox="0 0 10 10"
               refX="8"
               refY="5"
               markerWidth="6"
               markerHeight="6"
-              orient="auto-start-reverse"
+              orient="auto"
             >
-              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#7c3aed" />
+              <path
+                d="M 0 1.5 L 8 5 L 0 8.5 z"
+                fill="#7c3aed"
+              />
             </marker>
           </defs>
 
-          {/* Edges */}
-          <g>
-            {edges.map((edge, index) => {
-              const startNode = nodeMap.get(edge.prerequisiteSkillId);
-              const endNode = nodeMap.get(edge.dependentSkillId);
-              if (!startNode || !endNode) return null;
+          {/* Dependency Edges */}
+          {edges.map((edge, index) => {
+            const start = nodeMap.get(edge.prerequisiteSkillId);
+            const end = nodeMap.get(edge.dependentSkillId);
 
-              const isSelectedEdge =
-                selectedNode &&
-                (edge.prerequisiteSkillId === selectedNode.id ||
-                  edge.dependentSkillId === selectedNode.id);
+            if (!start || !end) return null;
 
-              const startX = startNode.x + NODE_W;
-              const startY = startNode.y + NODE_H / 2;
-              const endX = endNode.x;
-              const endY = endNode.y + NODE_H / 2;
-              const midX = (startX + endX) / 2;
+            const highlighted =
+              edge.prerequisiteSkillId === selectedNode?.id ||
+              edge.dependentSkillId === selectedNode?.id;
 
-              const pathData = `M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`;
+            const startX = start.x + NODE_W;
+            const startY = start.y + NODE_H / 2;
+            const endX = end.x;
+            const endY = end.y + NODE_H / 2;
+            const middleX = (startX + endX) / 2;
 
-              return (
-                <path
-                  key={`${edge.prerequisiteSkillId}-${edge.dependentSkillId}-${index}`}
-                  d={pathData}
-                  fill="none"
-                  stroke={isSelectedEdge ? "#7c3aed" : "#cbd5e1"}
-                  strokeWidth={isSelectedEdge ? 2 : 1.5}
-                  markerEnd={isSelectedEdge ? "url(#arrow-selected)" : "url(#arrow-default)"}
+            return (
+              <path
+                key={`${edge.prerequisiteSkillId}-${edge.dependentSkillId}-${index}`}
+                d={`M ${startX} ${startY} C ${middleX} ${startY}, ${middleX} ${endY}, ${endX} ${endY}`}
+                fill="none"
+                stroke={highlighted ? "#7c3aed" : "#cbd5e1"}
+                strokeWidth={highlighted ? 2.5 : 1.5}
+                markerEnd={
+                  highlighted
+                    ? "url(#selected-arrow)"
+                    : "url(#skill-arrow)"
+                }
+              />
+            );
+          })}
+
+          {/* Skill Nodes */}
+          {layoutNodes.map(node => {
+            const selected = node.id === selectedNode?.id;
+            const colors = getNodeColors(node, selected);
+
+            return (
+              <g
+                key={node.id}
+                onClick={() => setSelectedId(node.id)}
+                className="cursor-pointer"
+              >
+                <rect
+                  x={node.x}
+                  y={node.y}
+                  width={NODE_W}
+                  height={NODE_H}
+                  rx={9}
+                  fill={colors.fill}
+                  stroke={colors.stroke}
+                  strokeWidth={selected ? 2.5 : 1.5}
                 />
-              );
-            })}
-          </g>
 
-          {/* Nodes */}
-          <g>
-            {layoutNodes.map((node) => {
-              const isSelected = selectedNode && node.id === selectedNode.id;
-              const colors = getNodeColors(node, isSelected);
-
-              return (
-                <g
-                  key={node.id}
-                  onClick={() => setSelectedId(node.id)}
-                  className="cursor-pointer"
+                <text
+                  x={node.x + NODE_W / 2}
+                  y={node.y + 23}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill={colors.text}
+                  className="text-xs font-semibold pointer-events-none"
                 >
-                  <rect
-                    x={node.x}
-                    y={node.y}
-                    width={NODE_W}
-                    height={NODE_H}
-                    rx={8}
-                    fill={colors.fill}
-                    stroke={colors.stroke}
-                    strokeWidth={colors.strokeWidth}
-                  />
-                  <text
-                    x={node.x + NODE_W / 2}
-                    y={node.y + NODE_H / 2}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill={colors.text}
-                    className="text-xs font-semibold select-none pointer-events-none"
-                  >
-                    {truncate(node.name, 20)}
-                  </text>
-                </g>
-              );
-            })}
-          </g>
+                  {truncate(node.name)}
+                </text>
+
+                <text
+                  x={node.x + NODE_W / 2}
+                  y={node.y + 42}
+                  textAnchor="middle"
+                  fill={colors.text}
+                  fontSize="9"
+                  className="pointer-events-none"
+                >
+                  {node.status || "LOCKED"}
+                </text>
+              </g>
+            );
+          })}
         </svg>
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-5 rounded-xl bg-white p-4 shadow">
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <span className="h-3 w-3 rounded bg-green-400" />
+          Completed
+        </div>
+
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <span className="h-3 w-3 rounded bg-violet-400" />
+          Unlocked
+        </div>
+
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <span className="h-3 w-3 rounded bg-slate-300" />
+          Locked
+        </div>
       </div>
 
       {/* Selected Skill Details */}
@@ -466,11 +601,9 @@ function SkillGraph({ onStartAssessment }) {
         skill={selectedNode}
         prerequisiteNames={prerequisiteNames}
         unlockNames={unlockNames}
-        onStartAssessment={onStartAssessment}
         navigate={navigate}
       />
+
     </div>
   );
 }
-
-export default SkillGraph;

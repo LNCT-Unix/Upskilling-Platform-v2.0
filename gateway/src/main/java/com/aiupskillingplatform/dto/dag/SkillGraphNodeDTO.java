@@ -1,3 +1,4 @@
+
 package com.aiupskillingplatform.dto.dag;
 
 import java.util.UUID;
@@ -8,5 +9,7 @@ public record SkillGraphNodeDTO(
         String slug,
         String difficultyLevel,
         Integer sortOrder,
-        String categoryName
+        String categoryName,
+        String status,
+        Double masteryScore
 ) {}
