@@ -16,7 +16,9 @@ function Dashboard() {
   const [lastScore, setLastScore] = useState(0);
 
   // Becomes true after the first test is finished (set it from your backend later)
-  const [hasTakenTest, setHasTakenTest] = useState(false);
+  const [hasTakenTest, setHasTakenTest] = useState(
+    localStorage.getItem("assessment_completed") === "true"
+  );
 
   const loggedIn = isAuthenticated();
   const currentUser = getCurrentUser();
