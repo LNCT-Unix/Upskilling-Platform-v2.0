@@ -55,6 +55,7 @@ export default function Assessment() {
 
       const data = await res.json();
       if (data.completed) {
+        localStorage.setItem("assessment_completed", "true");
         setScreen('result');
       } else {
         setStepData(data);
@@ -114,6 +115,7 @@ export default function Assessment() {
     if (!answerResult) return;
 
     if (answerResult.next?.completed || stepData.questionNumber === stepData.totalQuestions) {
+      localStorage.setItem("assessment_completed", "true");
       setScreen('result');
     } else {
       setStepData(answerResult.next);
