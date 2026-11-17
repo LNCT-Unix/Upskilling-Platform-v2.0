@@ -8,6 +8,8 @@ import {
   Position,
   MarkerType,
   useReactFlow,
+  useViewport,
+  Panel,
   ReactFlowProvider,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -264,13 +266,25 @@ function SkillCardNode({ data }) {
   );
 }
 
-// Automatically centers and fits the active category in viewport
+// Automatically centers and fits the active category with comfortable reading zoom
 function FitViewWatcher({ category, nodeCount }) {
   const { fitView } = useReactFlow();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fitView({ padding: 0.2, duration: 400 });
+      if (category === "ALL") {
+        fitView({
+          padding: 0.15,
+          duration: 350,
+        });
+      } else {
+        fitView({
+          padding: 0.22,
+          minZoom: 0.7,
+          maxZoom: 1.0,
+          duration: 350,
+        });
+      }
     }, 60);
     return () => clearTimeout(timer);
   }, [category, nodeCount, fitView]);
@@ -278,54 +292,54 @@ function FitViewWatcher({ category, nodeCount }) {
   return null;
 }
 
-// Bottom floating Zoom & Fit controls matching reference image
-function FlowControls() {
-  const { zoomIn, zoomOut, fitView, getZoom } = useReactFlow();
-  const [zoomPercent, setZoomPercent] = useState(100);
+// Anchored permanently to the bottom-right corner inside the canvas
+function FlowControls({ category }) {
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const { zoom } = useViewport();
+  const zoomPercent = Math.round((zoom || 1) * 100);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      try {
-        setZoomPercent(Math.round(getZoom() * 100));
-      } catch {
-        // Safe fallback
-      }
-    }, 250);
-    return () => clearInterval(interval);
-  }, [getZoom]);
+  const handleFit = () => {
+    if (category === "ALL") {
+      fitView({ padding: 0.15, duration: 300 });
+    } else {
+      fitView({ padding: 0.22, minZoom: 0.7, maxZoom: 1.0, duration: 300 });
+    }
+  };
 
   return (
-    <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border border-slate-200/90 bg-white px-3.5 py-1.5 shadow-md">
-      <button
-        onClick={() => zoomOut()}
-        title="Zoom Out"
-        className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
-      >
-        <ZoomOut className="h-4 w-4" />
-      </button>
+    <Panel position="bottom-right" className="!m-4 !pointer-events-auto">
+      <div className="flex items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 px-3 py-1.5 shadow-md backdrop-blur-sm">
+        <button
+          onClick={() => zoomOut()}
+          title="Zoom Out"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+        >
+          <ZoomOut className="h-4 w-4" />
+        </button>
 
-      <span className="min-w-[48px] text-center text-xs font-semibold text-slate-700">
-        {zoomPercent}%
-      </span>
+        <span className="min-w-[42px] text-center text-xs font-semibold text-slate-700 select-none">
+          {zoomPercent}%
+        </span>
 
-      <button
-        onClick={() => zoomIn()}
-        title="Zoom In"
-        className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
-      >
-        <ZoomIn className="h-4 w-4" />
-      </button>
+        <button
+          onClick={() => zoomIn()}
+          title="Zoom In"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+        >
+          <ZoomIn className="h-4 w-4" />
+        </button>
 
-      <div className="mx-1 h-4 w-px bg-slate-200" />
+        <div className="mx-1 h-4 w-px bg-slate-200" />
 
-      <button
-        onClick={() => fitView({ padding: 0.2, duration: 400 })}
-        title="Fit View"
-        className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
-      >
-        <Maximize2 className="h-3.5 w-3.5" />
-      </button>
-    </div>
+        <button
+          onClick={handleFit}
+          title="Fit to Screen"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+        >
+          <Maximize2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </Panel>
   );
 }
 
@@ -679,7 +693,7 @@ export default function SkillGraph({ onStartAssessment }) {
               category={selectedCategory}
               nodeCount={visibleNodes.length}
             />
-            <FlowControls />
+            <FlowControls category={selectedCategory} />
           </ReactFlow>
         </ReactFlowProvider>
       </div>
