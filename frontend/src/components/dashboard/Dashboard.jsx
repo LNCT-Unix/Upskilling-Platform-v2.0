@@ -93,6 +93,7 @@ function Dashboard() {
             lastScore={lastScore}
             hasTakenTest={hasTakenTest}
             setActiveTab={setActiveTab}
+            navigate={navigate}
           />
         )}
         {activeTab === "Take IRT Test" && (
@@ -119,7 +120,7 @@ function Card({ title, children }) {
 }
 
 // Home screen: 4 cards in one row
-function Home({ lastScore, hasTakenTest, setActiveTab }) {
+function Home({ lastScore, hasTakenTest, setActiveTab, navigate }) {
   return (
     <div className="flex flex-col">
       <h2 className="mb-4 text-3xl font-bold">Your dashboard</h2>

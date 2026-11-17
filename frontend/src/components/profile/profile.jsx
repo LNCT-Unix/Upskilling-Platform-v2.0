@@ -1,5 +1,18 @@
 import { useNavigate } from "react-router-dom";
 import { getCurrentUser } from "../../api/auth";
+import logo from '../../assets/octobyte-logo.jpeg';
+
+function OctoByteLogo() {
+  return (
+    <div className="flex items-center gap-3 select-none cursor-pointer">
+      <img
+        src={logo}
+        alt="OctoByte Logo"
+        className="h-12 w-auto object-contain"
+      />
+    </div>
+  );
+}
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -9,7 +22,7 @@ export default function Profile() {
     <div className="min-h-screen bg-slate-50 text-slate-900">
       {/* Top bar */}
       <header className="flex items-center justify-between bg-white px-8 py-4 shadow-sm">
-        <h1 className="text-2xl font-bold text-violet-600">octoByte</h1>
+        <OctoByteLogo/>
         <button
           onClick={() => navigate("/dashboard")}
           className="rounded-full bg-violet-600 px-5 py-2 font-semibold text-white hover:bg-violet-700 cursor-pointer"
