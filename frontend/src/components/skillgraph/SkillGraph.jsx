@@ -1,443 +1,609 @@
-import { useState, useEffect } from "react";
-import { CheckCircle2, Clock, AlertCircle, Lock, ArrowRight, RefreshCw } from "lucide-react";
 
-// Default Track ID seeded in your Java database (V2__tracks.sql: Backend Development)
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../../api/config";
+import { getAuthToken, clearAuthSession } from "../../api/auth";
+
 const DEFAULT_TRACK_ID = "10000000-0000-0000-0000-000000000001";
 
-// Fallback initial data in case the Java backend server is not running yet
-const FALLBACK_SKILLS = [
-  {
-    id: "1",
-    name: "Variables and Data Types",
-    difficultyLevel: "BEGINNER",
-    stage: "Stage 1: Beginner",
-    status: "MASTERED",
-    score: 95,
-    categoryName: "Programming Fundamentals",
-    prereq: "None",
-    desc: "Understand Java variables, primitive types, type casting, and memory allocation.",
-  },
-  {
-    id: "2",
-    name: "Operators and Expressions",
-    difficultyLevel: "BEGINNER",
-    stage: "Stage 1: Beginner",
-    status: "MASTERED",
-    score: 85,
-    categoryName: "Programming Fundamentals",
-    prereq: "Variables and Data Types",
-    desc: "Arithmetic, relational, logical, and bitwise operators in Java.",
-  },
-  {
-    id: "3",
-    name: "Object-Oriented Programming",
-    difficultyLevel: "INTERMEDIATE",
-    stage: "Stage 2: Intermediate",
-    status: "IN_PROGRESS",
-    score: 60,
-    categoryName: "Core Java & OOP",
-    prereq: "Variables, Operators",
-    desc: "Classes, objects, inheritance, polymorphism, encapsulation, and abstraction.",
-  },
-  {
-    id: "4",
-    name: "Spring Boot & REST APIs",
-    difficultyLevel: "INTERMEDIATE",
-    stage: "Stage 2: Intermediate",
-    status: "UNLOCKED",
-    score: 40,
-    categoryName: "Frameworks",
-    prereq: "Object-Oriented Programming",
-    desc: "Building web controllers, services, dependency injection, and CRUD endpoints.",
-  },
-  {
-    id: "5",
-    name: "Database Integration (JPA/Hibernate)",
-    difficultyLevel: "ADVANCED",
-    stage: "Stage 3: Advanced",
-    status: "LOCKED",
-    score: 0,
-    categoryName: "Databases",
-    prereq: "Spring Boot & REST APIs",
-    desc: "Entities, repositories, PostgreSQL connections, and transaction management.",
-  },
-];
+const NODE_W = 180;
+const NODE_H = 58;
+const GAP_X = 90;
+const GAP_Y = 28;
+const PADDING = 35;
 
-const STAGES = ["Stage 1: Beginner", "Stage 2: Intermediate", "Stage 3: Advanced"];
-
-function SkillGraph({ onStartAssessment }) {
-  const [skills, setSkills] = useState(FALLBACK_SKILLS);
-  const [selectedSkill, setSelectedSkill] = useState(FALLBACK_SKILLS[0]);
-  const [filter, setFilter] = useState("All");
-  const [loading, setLoading] = useState(false);
-  const [isLiveApi, setIsLiveApi] = useState(false);
-
-  // Helper to map difficulty level to our 3 roadmap stages
-  function mapToStage(difficulty) {
-    if (!difficulty) return "Stage 1: Beginner";
-    const upper = difficulty.toUpperCase();
-    if (upper === "BEGINNER" || upper === "EASY") return "Stage 1: Beginner";
-    if (upper === "INTERMEDIATE" || upper === "MEDIUM") return "Stage 2: Intermediate";
-    return "Stage 3: Advanced";
+// Calculate DAG layout
+function calculateLayout(nodes, edges) {
+  if (!nodes.length) {
+    return { layoutNodes: [], width: 0, height: 0 };
   }
 
-  // Fetch skill graph from Java Spring Boot endpoint
-  async function fetchSkillGraph() {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
+  const nodeMap = new Map(nodes.map(node => [node.id, node]));
+  const prereqMap = new Map(nodes.map(node => [node.id, []]));
 
-      // If user is logged in, use personalized progress endpoint; otherwise use track graph endpoint
-      const endpoint = token
-        ? `/api/progress/tracks/${DEFAULT_TRACK_ID}/graph`
-        : `/api/tracks/${DEFAULT_TRACK_ID}/graph`;
+  edges.forEach(edge => {
+    const pId = edge.prerequisiteSkillId;
+    const dId = edge.dependentSkillId;
 
-      const headers = { "Content-Type": "application/json" };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const res = await fetch(endpoint, { headers });
-
-      if (!res.ok) {
-        throw new Error(`Server returned ${res.status}`);
-      }
-
-      const data = await res.json();
-
-      // Transform backend SkillGraphNodeDTO list to frontend format
-      if (data && Array.isArray(data.nodes) && data.nodes.length > 0) {
-        const formatted = data.nodes.map((node) => {
-          // Mastery score is a decimal 0.0 - 1.0 from backend
-          const score =
-            node.masteryScore != null ? Math.round(node.masteryScore * 100) : 0;
-
-          // Status from backend can be: MASTERED, IN_PROGRESS, UNLOCKED, LOCKED
-          const status = node.status || (score >= 75 ? "MASTERED" : "UNLOCKED");
-
-          return {
-            id: node.id,
-            name: node.name,
-            difficultyLevel: node.difficultyLevel,
-            stage: mapToStage(node.difficultyLevel),
-            status: status,
-            score: score,
-            categoryName: node.categoryName || "General",
-            prereq:
-              node.prerequisiteNames && node.prerequisiteNames.length > 0
-                ? node.prerequisiteNames.join(", ")
-                : "None",
-            desc:
-              node.description ||
-              `Learn and master ${node.name} for your backend track.`,
-          };
-        });
-
-        setSkills(formatted);
-        setSelectedSkill(formatted[0]);
-        setIsLiveApi(true);
-      }
-    } catch (err) {
-      console.log("Could not fetch from live Java backend, using local data:", err.message);
-      setIsLiveApi(false);
-    } finally {
-      setLoading(false);
+    if (pId !== dId && nodeMap.has(pId) && nodeMap.has(dId)) {
+      prereqMap.get(dId).push(pId);
     }
-  }
-
-  // Load the graph when the component mounts
-  useEffect(() => {
-    fetchSkillGraph();
-  }, []);
-
-  // Filter skills by status tab
-  const filteredSkills = skills.filter((skill) => {
-    if (filter === "All") return true;
-    if (filter === "Mastered") return skill.status === "MASTERED";
-    if (filter === "In Progress")
-      return skill.status === "IN_PROGRESS" || skill.status === "UNLOCKED";
-    if (filter === "Locked") return skill.status === "LOCKED";
-    return true;
   });
 
-  // Calculate summary counts
-  const masteredCount = skills.filter((s) => s.status === "MASTERED").length;
-  const inProgressCount = skills.filter(
-    (s) => s.status === "IN_PROGRESS" || s.status === "UNLOCKED"
-  ).length;
-  const lockedCount = skills.filter((s) => s.status === "LOCKED").length;
+  const memo = new Map();
 
-  const overallProgress =
-    skills.length > 0
-      ? Math.round(skills.reduce((acc, s) => acc + s.score, 0) / skills.length)
-      : 0;
+  function getColumn(id, visiting = new Set()) {
+    if (memo.has(id)) return memo.get(id);
+    if (visiting.has(id)) return 0;
+
+    const nextVisiting = new Set(visiting);
+    nextVisiting.add(id);
+
+    const prereqs = prereqMap.get(id) || [];
+
+    if (!prereqs.length) {
+      memo.set(id, 0);
+      return 0;
+    }
+
+    const column = Math.max(
+      ...prereqs.map(pid => getColumn(pid, nextVisiting) + 1)
+    );
+
+    memo.set(id, column);
+    return column;
+  }
+
+  const columns = [];
+
+  nodes.forEach(node => {
+    const col = getColumn(node.id);
+
+    if (!columns[col]) columns[col] = [];
+
+    columns[col].push(node);
+  });
+
+  const layoutNodes = [];
+  let maxRows = 0;
+
+  columns.forEach((column, colIndex) => {
+    if (!column) return;
+
+    column.sort((a, b) =>
+      (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+    );
+
+    maxRows = Math.max(maxRows, column.length);
+
+    column.forEach((node, rowIndex) => {
+      layoutNodes.push({
+        ...node,
+        x: PADDING + colIndex * (NODE_W + GAP_X),
+        y: PADDING + rowIndex * (NODE_H + GAP_Y)
+      });
+    });
+  });
+
+  const width =
+    PADDING * 2 +
+    columns.length * NODE_W +
+    (columns.length - 1) * GAP_X;
+
+  const height =
+    PADDING * 2 +
+    maxRows * NODE_H +
+    (maxRows - 1) * GAP_Y;
+
+  return { layoutNodes, width, height };
+}
+
+// Status colors
+function getNodeColors(node, selected) {
+  const border = selected ? "#7c3aed" : null;
+
+  switch ((node.status || "LOCKED").toUpperCase()) {
+    case "COMPLETED":
+    case "MASTERED":
+      return {
+        fill: "#dcfce7",
+        stroke: border || "#22c55e",
+        text: "#166534"
+      };
+
+    case "UNLOCKED":
+    case "AVAILABLE":
+    case "IN_PROGRESS":
+      return {
+        fill: "#ede9fe",
+        stroke: border || "#a78bfa",
+        text: "#5b21b6"
+      };
+
+    default:
+      return {
+        fill: "#f1f5f9",
+        stroke: border || "#cbd5e1",
+        text: "#64748b"
+      };
+  }
+}
+
+function truncate(value, max = 21) {
+  if (!value) return "";
+
+  return value.length > max
+    ? value.slice(0, max - 1) + "…"
+    : value;
+}
+
+// Loading and error card
+function MessageCard({ title, message, buttonText, onButtonClick }) {
+  return (
+    <div className="flex min-h-[360px] items-center justify-center p-6">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow">
+        <h3 className="text-lg font-bold text-slate-800">
+          {title}
+        </h3>
+
+        <p className="mt-2 text-sm text-slate-600">
+          {message}
+        </p>
+
+        {buttonText && (
+          <button
+            onClick={onButtonClick}
+            className="mt-6 rounded-full bg-violet-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 cursor-pointer"
+          >
+            {buttonText}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Selected skill details
+function SkillDetail({
+  skill,
+  prerequisiteNames,
+  unlockNames,
+  navigate
+}) {
+  if (!skill) return null;
+
+  const mastery = Number(skill.masteryScore ?? 0);
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* ---------- HEADER BANNER ---------- */}
-      <div className="flex flex-col justify-between gap-4 rounded-2xl bg-white p-6 shadow sm:flex-row sm:items-center">
+    <div className="rounded-2xl bg-white p-6 shadow">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-violet-600">
-              Java Backend Track (DAG)
-            </span>
-            {isLiveApi ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                ● Live API Connected
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-                ○ Demo Mode (Start Java Server to connect)
-              </span>
-            )}
-          </div>
-          <h2 className="text-2xl font-bold text-slate-800">
-            Track: <span className="text-violet-600">Backend Development</span>
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Interactive skill dependency graph mapped from your Spring Boot API.
+          <span className="text-xs font-semibold uppercase tracking-wider text-violet-600">
+            Selected Skill
+          </span>
+
+          <h3 className="mt-1 text-2xl font-bold text-slate-800">
+            {skill.name}
+          </h3>
+        </div>
+
+        <button
+          onClick={() => navigate("/assessment")}
+          className="self-start rounded-full bg-violet-600 px-6 py-2 text-sm font-semibold text-white hover:bg-violet-700 cursor-pointer"
+        >
+          Take Assessment
+        </button>
+      </div>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl bg-slate-50 p-4">
+          <span className="text-xs text-slate-500">Category</span>
+          <p className="mt-1 font-semibold text-slate-700">
+            {skill.categoryName || "General"}
           </p>
         </div>
 
-        {/* Progress meter and refresh button */}
-        <div className="flex items-center gap-4 rounded-xl bg-slate-50 p-4">
-          <div>
-            <div className="flex justify-between text-xs font-semibold text-slate-600">
-              <span>Track Completion</span>
-              <span className="text-violet-600 font-bold">{overallProgress}%</span>
-            </div>
-            <div className="mt-1 h-2.5 w-36 overflow-hidden rounded-full bg-slate-200">
-              <div
-                className="h-full rounded-full bg-violet-600 transition-all duration-300"
-                style={{ width: `${overallProgress}%` }}
-              />
-            </div>
-          </div>
+        <div className="rounded-xl bg-slate-50 p-4">
+          <span className="text-xs text-slate-500">Status</span>
+          <p className="mt-1 font-semibold text-slate-700">
+            {skill.status || "LOCKED"}
+          </p>
+        </div>
 
-          <div className="h-8 w-px bg-slate-200" />
+        <div className="rounded-xl bg-slate-50 p-4">
+          <span className="text-xs text-slate-500">Mastery Score</span>
+          <p className="mt-1 font-semibold text-slate-700">
+            {Math.round(mastery * 100)}%
+          </p>
+        </div>
 
-          {/* Quick counts */}
-          <div className="flex gap-3 text-center text-xs">
-            <div>
-              <p className="font-bold text-emerald-600 text-sm">{masteredCount}</p>
-              <p className="text-slate-400">Mastered</p>
-            </div>
-            <div>
-              <p className="font-bold text-amber-500 text-sm">{inProgressCount}</p>
-              <p className="text-slate-400">Available</p>
-            </div>
-            <div>
-              <p className="font-bold text-slate-400 text-sm">{lockedCount}</p>
-              <p className="text-slate-400">Locked</p>
-            </div>
-          </div>
-
-          <button
-            onClick={fetchSkillGraph}
-            title="Reload from backend"
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </button>
+        <div className="rounded-xl bg-slate-50 p-4">
+          <span className="text-xs text-slate-500">Difficulty</span>
+          <p className="mt-1 font-semibold text-slate-700">
+            {skill.difficultyLevel || "Unspecified"}
+          </p>
         </div>
       </div>
 
-      {/* ---------- FILTER CHIPS ---------- */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold text-slate-600 mr-2">Filter:</span>
-        {["All", "Mastered", "In Progress", "Locked"].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setFilter(tab)}
-            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
-              filter === tab
-                ? "bg-violet-600 text-white"
-                : "bg-white text-slate-600 shadow-sm hover:bg-slate-100"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      {/* ---------- ROADMAP COLUMNS + DETAIL DRAWER ---------- */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Left: 3-Stage Roadmap */}
-        <div className="lg:col-span-2 flex flex-col gap-6 rounded-2xl bg-white p-6 shadow">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {STAGES.map((stageName, stageIdx) => {
-              const stageSkills = filteredSkills.filter((s) => s.stage === stageName);
-
-              return (
-                <div key={stageName} className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                    <h3 className="text-sm font-bold text-slate-700">{stageName}</h3>
-                    {stageIdx < STAGES.length - 1 && (
-                      <ArrowRight className="hidden md:block h-4 w-4 text-slate-300" />
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-3">
-                    {stageSkills.map((skill) => {
-                      const isSelected = selectedSkill?.id === skill.id;
-
-                      return (
-                        <div
-                          key={skill.id}
-                          onClick={() => setSelectedSkill(skill)}
-                          className={`cursor-pointer rounded-xl border p-4 transition-all ${
-                            isSelected
-                              ? "border-violet-600 bg-violet-50/50 shadow-md ring-2 ring-violet-200"
-                              : "border-slate-200 bg-white hover:border-violet-300 hover:shadow-sm"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <h4 className="text-sm font-semibold text-slate-800 line-clamp-1">
-                              {skill.name}
-                            </h4>
-                            <BackendStatusBadge status={skill.status} />
-                          </div>
-
-                          <span className="text-[10px] text-slate-400 font-medium">
-                            {skill.categoryName}
-                          </span>
-
-                          <div className="mt-3">
-                            <div className="flex justify-between text-[11px] text-slate-500 mb-1">
-                              <span>Mastery</span>
-                              <span className="font-semibold text-slate-700">
-                                {skill.score}%
-                              </span>
-                            </div>
-                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                              <div
-                                className={`h-full rounded-full ${
-                                  skill.status === "MASTERED"
-                                    ? "bg-emerald-500"
-                                    : skill.status === "LOCKED"
-                                    ? "bg-slate-300"
-                                    : "bg-violet-600"
-                                }`}
-                                style={{ width: `${skill.score}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {stageSkills.length === 0 && (
-                      <p className="p-4 text-center text-xs text-slate-400 italic">
-                        No skills in this stage.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="rounded-xl bg-slate-50 p-4">
+          <span className="text-xs text-slate-500">Prerequisites</span>
+          <p className="mt-1 text-sm text-slate-700">
+            {prerequisiteNames.join(", ") || "None"}
+          </p>
         </div>
 
-        {/* Right: Selected Skill Detail Box */}
-        <div className="flex flex-col justify-between rounded-2xl bg-white p-6 shadow">
-          {selectedSkill ? (
-            <div className="flex flex-col gap-4">
-              <div>
-                <div className="mb-2">
-                  <BackendStatusBadge status={selectedSkill.status} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-800">{selectedSkill.name}</h3>
-                <p className="mt-1 text-xs text-violet-600 font-semibold">
-                  {selectedSkill.categoryName} • {selectedSkill.stage}
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 p-3.5">
-                <p className="text-xs font-semibold text-slate-500">Skill Overview</p>
-                <p className="mt-1 text-sm text-slate-700 leading-relaxed">
-                  {selectedSkill.desc}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Prerequisites (From DAG)
-                </p>
-                <p className="mt-1 text-sm font-medium text-slate-700 bg-slate-100 inline-block px-3 py-1 rounded-lg">
-                  {selectedSkill.prereq}
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-violet-100 bg-violet-50/60 p-3.5">
-                <p className="text-xs font-semibold text-violet-700 uppercase tracking-wider">
-                  Current Status
-                </p>
-                <p className="mt-1 text-xs text-slate-700 leading-relaxed font-medium">
-                  {selectedSkill.status === "MASTERED" &&
-                    "Great job! You have demonstrated proficiency in this skill."}
-                  {selectedSkill.status === "UNLOCKED" &&
-                    "Prerequisites completed! This skill is ready for you to study and test."}
-                  {selectedSkill.status === "IN_PROGRESS" &&
-                    "You are actively working on this skill."}
-                  {selectedSkill.status === "LOCKED" &&
-                    "Complete the prerequisite skills above to unlock this assessment."}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-400 text-center my-auto">
-              Select any skill card from the graph to inspect it.
-            </p>
-          )}
-
-          {/* Action button */}
-          <div className="mt-6 border-t border-slate-100 pt-4">
-            <button
-              onClick={() => onStartAssessment?.(selectedSkill?.name)}
-              disabled={selectedSkill?.status === "LOCKED"}
-              className={`w-full rounded-full py-2.5 text-sm font-semibold text-white transition-colors shadow-sm ${
-                selectedSkill?.status === "LOCKED"
-                  ? "bg-slate-300 cursor-not-allowed"
-                  : "bg-violet-600 hover:bg-violet-700"
-              }`}
-            >
-              {selectedSkill?.status === "LOCKED"
-                ? "Locked (Prerequisites Needed)"
-                : `Take IRT Test for ${selectedSkill?.name || "Skill"}`}
-            </button>
-          </div>
+        <div className="rounded-xl bg-slate-50 p-4">
+          <span className="text-xs text-slate-500">Unlocks</span>
+          <p className="mt-1 text-sm text-slate-700">
+            {unlockNames.join(", ") || "None"}
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-// Maps backend DTO statuses (MASTERED, UNLOCKED, IN_PROGRESS, LOCKED) to UI badges
-function BackendStatusBadge({ status }) {
-  if (status === "MASTERED") {
+export default function SkillGraph() {
+  const navigate = useNavigate();
+
+  const [nodes, setNodes] = useState([]);
+  const [edges, setEdges] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch latest personalized graph
+  const loadGraph = useCallback(async () => {
+    const token = getAuthToken();
+
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/progress/tracks/${DEFAULT_TRACK_ID}/graph`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          cache: "no-store"
+        }
+      );
+
+      if (response.status === 401) {
+        clearAuthSession();
+        navigate("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          `Unable to fetch graph. HTTP ${response.status}`
+        );
+      }
+
+      const data = await response.json();
+
+      const fetchedNodes = Array.isArray(data.nodes)
+        ? data.nodes
+        : [];
+
+      const fetchedEdges = Array.isArray(data.edges)
+        ? data.edges
+        : [];
+
+      setNodes(fetchedNodes);
+      setEdges(fetchedEdges);
+
+      // Preserve the selected skill after refresh
+      setSelectedId(previousId =>
+        fetchedNodes.some(node => node.id === previousId)
+          ? previousId
+          : fetchedNodes[0]?.id || null
+      );
+
+    } catch (err) {
+      console.error("Skill graph error:", err);
+      setError(err.message || "Failed to load skill graph");
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate]);
+
+  // Fetch when graph page opens
+  useEffect(() => {
+    loadGraph();
+  }, [loadGraph]);
+
+  if (loading) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
-        <CheckCircle2 className="h-3 w-3" />
-        Mastered
-      </span>
+      <div className="flex min-h-[360px] items-center justify-center">
+        <p className="text-sm font-medium text-slate-500">
+          Loading your skill graph...
+        </p>
+      </div>
     );
   }
 
-  if (status === "IN_PROGRESS" || status === "UNLOCKED") {
+  if (error) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700 border border-violet-200">
-        <Clock className="h-3 w-3" />
-        {status === "IN_PROGRESS" ? "In Progress" : "Unlocked"}
-      </span>
+      <MessageCard
+        title="Could Not Load Graph"
+        message={error}
+        buttonText="Retry"
+        onButtonClick={loadGraph}
+      />
     );
   }
+
+  if (!nodes.length) {
+    return (
+      <MessageCard
+        title="No Skills Found"
+        message="No skills are available for this learning track."
+        buttonText="Dashboard"
+        onButtonClick={() => navigate("/dashboard")}
+      />
+    );
+  }
+
+  const {
+    layoutNodes,
+    width,
+    height
+  } = calculateLayout(nodes, edges);
+
+  const nodeMap = new Map(
+    layoutNodes.map(node => [node.id, node])
+  );
+
+  const selectedNode =
+    nodeMap.get(selectedId) || layoutNodes[0];
+
+  const prerequisiteNames = edges
+    .filter(edge =>
+      edge.dependentSkillId === selectedNode?.id
+    )
+    .map(edge =>
+      nodeMap.get(edge.prerequisiteSkillId)?.name
+    )
+    .filter(Boolean);
+
+  const unlockNames = edges
+    .filter(edge =>
+      edge.prerequisiteSkillId === selectedNode?.id
+    )
+    .map(edge =>
+      nodeMap.get(edge.dependentSkillId)?.name
+    )
+    .filter(Boolean);
+
+  const masteredCount = nodes.filter(node =>
+    ["COMPLETED", "MASTERED"].includes(
+      (node.status || "").toUpperCase()
+    )
+  ).length;
+
+  const unlockedCount = nodes.filter(node =>
+    ["UNLOCKED", "AVAILABLE", "IN_PROGRESS"].includes(
+      (node.status || "").toUpperCase()
+    )
+  ).length;
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 border border-slate-200">
-      <Lock className="h-3 w-3" />
-      Locked
-    </span>
+    <div className="flex flex-col gap-6">
+
+      {/* Heading and Navigation */}
+      <div className="rounded-2xl bg-white p-6 shadow">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">
+              My Skill Graph
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Track your learning progress and skill dependencies.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="rounded-full border border-violet-200 px-5 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50 cursor-pointer"
+            >
+              Dashboard
+            </button>
+
+            <button
+              onClick={loadGraph}
+              className="rounded-full bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-700 cursor-pointer"
+            >
+              Refresh Graph
+            </button>
+          </div>
+        </div>
+
+        {/* Progress Summary */}
+        <div className="mt-6 grid grid-cols-3 gap-3">
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className="text-xs text-slate-500">Total Skills</p>
+            <p className="mt-1 text-2xl font-bold text-slate-800">
+              {nodes.length}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-purple-50 p-4">
+            <p className="text-xs text-slate-500">Unlocked</p>
+            <p className="mt-1 text-2xl font-bold text-purple-700">
+              {unlockedCount}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-green-50 p-4">
+            <p className="text-xs text-slate-500">Mastered</p>
+            <p className="mt-1 text-2xl font-bold text-green-700">
+              {masteredCount}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Graph */}
+      <div className="overflow-x-auto rounded-2xl bg-white p-6 shadow">
+        <svg
+          width={Math.max(width, 700)}
+          height={Math.max(height, 350)}
+          className="block select-none"
+        >
+          <defs>
+            <marker
+              id="skill-arrow"
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto"
+            >
+              <path
+                d="M 0 1.5 L 8 5 L 0 8.5 z"
+                fill="#cbd5e1"
+              />
+            </marker>
+
+            <marker
+              id="selected-arrow"
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto"
+            >
+              <path
+                d="M 0 1.5 L 8 5 L 0 8.5 z"
+                fill="#7c3aed"
+              />
+            </marker>
+          </defs>
+
+          {/* Dependency Edges */}
+          {edges.map((edge, index) => {
+            const start = nodeMap.get(edge.prerequisiteSkillId);
+            const end = nodeMap.get(edge.dependentSkillId);
+
+            if (!start || !end) return null;
+
+            const highlighted =
+              edge.prerequisiteSkillId === selectedNode?.id ||
+              edge.dependentSkillId === selectedNode?.id;
+
+            const startX = start.x + NODE_W;
+            const startY = start.y + NODE_H / 2;
+            const endX = end.x;
+            const endY = end.y + NODE_H / 2;
+            const middleX = (startX + endX) / 2;
+
+            return (
+              <path
+                key={`${edge.prerequisiteSkillId}-${edge.dependentSkillId}-${index}`}
+                d={`M ${startX} ${startY} C ${middleX} ${startY}, ${middleX} ${endY}, ${endX} ${endY}`}
+                fill="none"
+                stroke={highlighted ? "#7c3aed" : "#cbd5e1"}
+                strokeWidth={highlighted ? 2.5 : 1.5}
+                markerEnd={
+                  highlighted
+                    ? "url(#selected-arrow)"
+                    : "url(#skill-arrow)"
+                }
+              />
+            );
+          })}
+
+          {/* Skill Nodes */}
+          {layoutNodes.map(node => {
+            const selected = node.id === selectedNode?.id;
+            const colors = getNodeColors(node, selected);
+
+            return (
+              <g
+                key={node.id}
+                onClick={() => setSelectedId(node.id)}
+                className="cursor-pointer"
+              >
+                <rect
+                  x={node.x}
+                  y={node.y}
+                  width={NODE_W}
+                  height={NODE_H}
+                  rx={9}
+                  fill={colors.fill}
+                  stroke={colors.stroke}
+                  strokeWidth={selected ? 2.5 : 1.5}
+                />
+
+                <text
+                  x={node.x + NODE_W / 2}
+                  y={node.y + 23}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill={colors.text}
+                  className="text-xs font-semibold pointer-events-none"
+                >
+                  {truncate(node.name)}
+                </text>
+
+                <text
+                  x={node.x + NODE_W / 2}
+                  y={node.y + 42}
+                  textAnchor="middle"
+                  fill={colors.text}
+                  fontSize="9"
+                  className="pointer-events-none"
+                >
+                  {node.status || "LOCKED"}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-5 rounded-xl bg-white p-4 shadow">
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <span className="h-3 w-3 rounded bg-green-400" />
+          Completed
+        </div>
+
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <span className="h-3 w-3 rounded bg-violet-400" />
+          Unlocked
+        </div>
+
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <span className="h-3 w-3 rounded bg-slate-300" />
+          Locked
+        </div>
+      </div>
+
+      {/* Selected Skill Details */}
+      <SkillDetail
+        skill={selectedNode}
+        prerequisiteNames={prerequisiteNames}
+        unlockNames={unlockNames}
+        navigate={navigate}
+      />
+
+    </div>
   );
 }
-
-export default SkillGraph;

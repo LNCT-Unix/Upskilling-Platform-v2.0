@@ -26,6 +26,9 @@ application.properties
 !.env.example
 !**/.env.example
 
+### Local DB overrides (machine-specific, do not commit) ###
+**/config/DatabaseConfig.java
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
