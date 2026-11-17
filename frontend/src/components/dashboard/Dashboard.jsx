@@ -1,12 +1,21 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import logo from '../../assets/octobyte-logo.jpeg';
 import SkillGraph from "../skillgraph/SkillGraph";
 import Assessment from "../assessment/Assessment";
 import { clearAuthSession, isAuthenticated, getCurrentUser } from "../../api/auth";
 
 // The items shown on the top bar
-const NAV_ITEMS = ["Dashboard", "Take IRT Test", "View Skill Graph"];
-
+const NAV_ITEMS = ["Dashboard", "Take IRT Test", "View Skill Graph", "Roadmap", "Profile"];
+const OctoByteLogo = () => (
+  <div className="flex items-center gap-3 select-none cursor-pointer">
+    <img
+      src={logo}
+      alt="OctoByte Logo"
+      className="h-12 w-auto object-contain"
+    />
+  </div>
+);
 function Dashboard() {
   const navigate = useNavigate();
   // Which page is open right now
@@ -34,7 +43,7 @@ function Dashboard() {
     <div className="flex h-screen flex-col bg-slate-50 text-slate-900">
       {/* ---------- TOP BAR ---------- */}
       <header className="flex shrink-0 items-center justify-between bg-white px-8 py-4 shadow-sm">
-        <h1 className="text-2xl font-bold text-violet-600">octoByte</h1>
+        <OctoByteLogo />
 
         <nav className="flex gap-8">
           {NAV_ITEMS.map((item) => (
@@ -43,6 +52,10 @@ function Dashboard() {
               onClick={() => {
                 if (item === "Take IRT Test") {
                   navigate("/assessment");
+                } else if (item === "Profile") {
+                  navigate("/profile");
+                } else if (item === "Roadmap") {
+                  navigate("/roadmap");
                 } else {
                   setActiveTab(item);
                 }
@@ -150,9 +163,8 @@ function Home({ lastScore, hasTakenTest, setActiveTab }) {
             Your step-by-step plan to close your skill gaps.
           </p>
           <button
-            onClick={() => setActiveTab("Roadmap")}
-            disabled={!hasTakenTest}
-            className="rounded-full border border-violet-600 py-2 font-semibold text-violet-600 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={() => navigate("/roadmap")}
+            className="rounded-full bg-violet-600 py-2 font-semibold text-white hover:bg-violet-700 cursor-pointer"
           >
             View roadmap path
           </button>

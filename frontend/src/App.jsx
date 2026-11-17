@@ -5,6 +5,8 @@ import Signup from './components/auth/Signup'
 import Dashboard from './components/dashboard/Dashboard'
 import Assessment from './components/assessment/Assessment'
 import SkillGraph from './components/skillgraph/SkillGraph'
+import Profile from './components/profile/profile'
+import Roadmap from './components/roadmap/roadmap'
 import './App.css'
 
 function App() {
@@ -17,6 +19,8 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/assessment" element={<Assessment />} />
         <Route path="/skills" element={<SkillGraph />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/roadmap" element={<Roadmap />} />
         {/* Catch-all redirect back to landing page */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
