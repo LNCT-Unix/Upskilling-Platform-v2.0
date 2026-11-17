@@ -82,6 +82,7 @@ public class SecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(
                                 "/error",
+                                "/",
                                 "/api/auth/register",
                                 "/api/auth/login",
                                 "/track/**",
