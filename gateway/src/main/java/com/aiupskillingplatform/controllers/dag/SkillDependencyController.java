@@ -22,6 +22,4 @@ public class SkillDependencyController {
     public ResponseEntity<List<SkillResponseDTO>> getPrerequisites(@PathVariable UUID skillId) {
         return ResponseEntity.ok(skillDependencyService.getPrerequisites(skillId));
     }
-
-
 }
