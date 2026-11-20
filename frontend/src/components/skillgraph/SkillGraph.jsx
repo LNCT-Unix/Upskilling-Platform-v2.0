@@ -28,9 +28,14 @@ import {
   Maximize2,
   ArrowRight,
   RotateCcw,
+  HelpCircle,
+  Zap,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { API_BASE_URL } from "../../api/config";
 import { getAuthToken, clearAuthSession } from "../../api/auth";
+import { fetchQuestionsBySkill } from "../../api/skillQuestions";
 
 const DEFAULT_TRACK_ID = "10000000-0000-0000-0000-000000000001";
 
@@ -168,7 +173,7 @@ function calculateCategoryLayout(nodes, edges) {
 }
 
 // Custom Skill Card Node - Spacious, legible, styled to match reference image
-function SkillCardNode({ data }) {
+function SkillCardNode({ data, id }) {
   const {
     name,
     categoryName,
@@ -176,6 +181,7 @@ function SkillCardNode({ data }) {
     status = "LOCKED",
     masteryScore = 0,
     selected,
+    onNodeSelect,
   } = data;
 
   const theme = CATEGORY_THEMES[categoryName] || DEFAULT_THEME;
@@ -197,6 +203,11 @@ function SkillCardNode({ data }) {
 
   return (
     <div
+      onClick={() => {
+        if (onNodeSelect) {
+          onNodeSelect(id || data.id);
+        }
+      }}
       className={`group relative flex w-[280px] min-h-[100px] items-stretch rounded-2xl bg-white transition-all duration-150 cursor-pointer ${
         selected
           ? "ring-2 ring-[#7056ED] shadow-xl shadow-purple-500/15 border-transparent scale-[1.02]"
@@ -257,8 +268,9 @@ function SkillCardNode({ data }) {
             {difficultyLevel || "BEGINNER"}
           </span>
 
-          <span className="text-[11px] font-semibold text-slate-500">
-            Score: {Math.round(Number(masteryScore ?? 0) * 100)}%
+          <span className="flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-[#7056ED] border border-purple-100">
+            <HelpCircle className="h-3 w-3" />
+            5 Questions
           </span>
         </div>
       </div>
@@ -459,6 +471,62 @@ export default function SkillGraph({ onStartAssessment }) {
       .filter(Boolean);
   }, [selectedNode, rawNodes, rawEdges]);
 
+  // Skill questions state for the interactive quick-test question card
+  const [questions, setQuestions] = useState([]);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [questionsError, setQuestionsError] = useState(null);
+  const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
+
+  // Fetch 5 questions whenever selectedNode changes
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (!selectedNode) {
+      setQuestions([]);
+      setQuestionsLoading(false);
+      setQuestionsError(null);
+      return;
+    }
+
+    setQuestionsLoading(true);
+    setQuestionsError(null);
+
+    fetchQuestionsBySkill(selectedNode)
+      .then((res) => {
+        if (!isCancelled) {
+          setQuestions(res || []);
+          setQuestionsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!isCancelled) {
+          console.error("Error fetching skill questions:", err);
+          setQuestionsError("Failed to fetch questions for this skill. Please try again.");
+          setQuestionsLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedNode?.id]);
+
+  const handleTakeQuickTest = useCallback(
+    (targetNode) => {
+      const nodeToTest = targetNode || selectedNode;
+      if (!nodeToTest) return;
+
+      if (onStartAssessment) {
+        onStartAssessment(nodeToTest);
+      } else {
+        navigate(
+          `/assessment?track=backend-development&skill=${nodeToTest.slug}&skillName=${encodeURIComponent(nodeToTest.name)}&skillId=${nodeToTest.id}`
+        );
+      }
+    },
+    [onStartAssessment, selectedNode, navigate]
+  );
+
   // Compute React Flow nodes and edges with clean positions
   const { flowNodes, flowEdges } = useMemo(() => {
     if (!visibleNodes.length) return { flowNodes: [], flowEdges: [] };
@@ -475,6 +543,10 @@ export default function SkillGraph({ onStartAssessment }) {
         data: {
           ...node,
           selected: node.id === selectedNode?.id,
+          onNodeSelect: (nodeId) => {
+            setSelectedId(nodeId);
+            setIsQuestionModalOpen(true);
+          },
         },
       };
     });
@@ -671,7 +743,10 @@ export default function SkillGraph({ onStartAssessment }) {
             nodes={flowNodes}
             edges={flowEdges}
             nodeTypes={nodeTypes}
-            onNodeClick={(_, node) => setSelectedId(node.id)}
+            onNodeClick={(_, node) => {
+              setSelectedId(node.id);
+              setIsQuestionModalOpen(true);
+            }}
             className="light bg-white"
             style={{ backgroundColor: "#ffffff", colorScheme: "light" }}
             fitView
@@ -697,6 +772,283 @@ export default function SkillGraph({ onStartAssessment }) {
           </ReactFlow>
         </ReactFlowProvider>
       </div>
+
+      {/* Interactive Skill Questions Card */}
+      {selectedNode && (
+        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+          {/* Card Header */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[#7056ED]">
+                  {selectedNode.categoryName || "Skill Assessment"}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-bold text-[#7056ED] border border-purple-200">
+                  <HelpCircle className="h-3 w-3" />
+                  5 Questions
+                </span>
+              </div>
+              <h3 className="mt-1 text-2xl font-bold text-slate-800">
+                {selectedNode.name}
+              </h3>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Review key questions for this skill to test your understanding, or start a quick test.
+              </p>
+            </div>
+
+            {/* Prominent Take a Quick Test Button */}
+            <button
+              onClick={() => handleTakeQuickTest(selectedNode)}
+              className="flex items-center justify-center gap-2 self-start sm:self-center rounded-full bg-[#7056ED] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#5f44e2] cursor-pointer shadow-md shadow-purple-500/20 transition-all hover:scale-[1.02]"
+            >
+              <Zap className="h-4 w-4 fill-current" />
+              <span>Take a Quick Test</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Question List / States */}
+          <div className="mt-5">
+            {questionsLoading && (
+              <div className="flex flex-col items-center justify-center py-10 gap-3">
+                <div className="h-8 w-8 animate-spin rounded-full border-3 border-[#7056ED] border-t-transparent" />
+                <p className="text-sm font-medium text-slate-500">
+                  Fetching questions for <span className="font-semibold text-slate-700">{selectedNode.name}</span>...
+                </p>
+              </div>
+            )}
+
+            {!questionsLoading && questionsError && (
+              <div className="rounded-xl border border-rose-100 bg-rose-50/70 p-6 text-center">
+                <AlertCircle className="mx-auto h-6 w-6 text-rose-500 mb-2" />
+                <p className="text-sm font-semibold text-rose-800">{questionsError}</p>
+                <button
+                  onClick={() => {
+                    setQuestionsLoading(true);
+                    setQuestionsError(null);
+                    fetchQuestionsBySkill(selectedNode)
+                      .then((res) => {
+                        setQuestions(res || []);
+                        setQuestionsLoading(false);
+                      })
+                      .catch(() => {
+                        setQuestionsError("Failed to fetch questions for this skill.");
+                        setQuestionsLoading(false);
+                      });
+                  }}
+                  className="mt-3 rounded-full bg-rose-600 px-5 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 cursor-pointer"
+                >
+                  Retry Fetching
+                </button>
+              </div>
+            )}
+
+            {!questionsLoading && !questionsError && questions.length > 0 && (
+              <div className="space-y-3.5">
+                {questions.map((q, idx) => (
+                  <div
+                    key={q.id || idx}
+                    className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 transition-all hover:border-purple-200 hover:bg-white hover:shadow-sm"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-[#7056ED]">
+                        {idx + 1}
+                      </span>
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-semibold text-slate-800">
+                            {q.text}
+                          </p>
+                          <span className="shrink-0 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                            {q.difficulty || "BEGINNER"}
+                          </span>
+                        </div>
+
+                        {q.options && Object.keys(q.options).length > 0 && (
+                          <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {Object.entries(q.options).map(([optKey, optText]) => (
+                              <div
+                                key={optKey}
+                                className="flex items-center gap-2 rounded-lg border border-slate-200/80 bg-white px-3 py-1.5 text-xs text-slate-700"
+                              >
+                                <span className="font-bold text-[#7056ED]">{optKey}.</span>
+                                <span className="truncate">{optText}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-purple-100 bg-purple-50/50 p-4">
+                  <div className="text-center sm:text-left">
+                    <p className="text-xs font-bold text-slate-800">Ready to test your knowledge?</p>
+                    <p className="text-xs text-slate-500">Start the test to evaluate your mastery and update your graph.</p>
+                  </div>
+                  <button
+                    onClick={() => handleTakeQuickTest(selectedNode)}
+                    className="flex items-center gap-1.5 rounded-full bg-[#7056ED] px-6 py-2 text-xs font-semibold text-white hover:bg-[#5f44e2] cursor-pointer shadow-sm shadow-purple-500/20"
+                  >
+                    <span>Start {selectedNode.name} Test</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Interactive Modal Pop-up: Instantly visible right on screen upon clicking any skill node */}
+      {isQuestionModalOpen && selectedNode && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          onClick={() => setIsQuestionModalOpen(false)}
+        >
+          <div
+            className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl bg-white shadow-2xl border border-slate-100 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5 bg-white shrink-0">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#7056ED]">
+                    {selectedNode.categoryName || "Skill Assessment"}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-bold text-[#7056ED] border border-purple-200">
+                    <HelpCircle className="h-3 w-3" />
+                    5 Questions
+                  </span>
+                </div>
+                <h3 className="mt-1 text-2xl font-bold text-slate-800">
+                  {selectedNode.name}
+                </h3>
+              </div>
+
+              <button
+                onClick={() => setIsQuestionModalOpen(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              {questionsLoading && (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <div className="h-9 w-9 animate-spin rounded-full border-3 border-[#7056ED] border-t-transparent" />
+                  <p className="text-sm font-medium text-slate-500">
+                    Loading 5 questions for <span className="font-semibold text-slate-700">{selectedNode.name}</span>...
+                  </p>
+                </div>
+              )}
+
+              {!questionsLoading && questionsError && (
+                <div className="rounded-2xl border border-rose-100 bg-rose-50/70 p-6 text-center">
+                  <AlertCircle className="mx-auto h-7 w-7 text-rose-500 mb-2" />
+                  <p className="text-sm font-semibold text-rose-800">{questionsError}</p>
+                  <button
+                    onClick={() => {
+                      setQuestionsLoading(true);
+                      setQuestionsError(null);
+                      fetchQuestionsBySkill(selectedNode)
+                        .then((res) => {
+                          setQuestions(res || []);
+                          setQuestionsLoading(false);
+                        })
+                        .catch(() => {
+                          setQuestionsError("Failed to fetch questions for this skill.");
+                          setQuestionsLoading(false);
+                        });
+                    }}
+                    className="mt-3 rounded-full bg-rose-600 px-5 py-2 text-xs font-semibold text-white hover:bg-rose-700 cursor-pointer"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {!questionsLoading && !questionsError && questions.length > 0 && (
+                <div className="space-y-3.5">
+                  <p className="text-xs text-slate-500 font-medium">
+                    Review these 5 questions or click <b>Take a Quick Test</b> to launch the assessment.
+                  </p>
+
+                  {questions.map((q, idx) => (
+                    <div
+                      key={q.id || idx}
+                      className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 transition-all hover:border-purple-200 hover:bg-white hover:shadow-sm"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-[#7056ED]">
+                          {idx + 1}
+                        </span>
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-semibold text-slate-800">
+                              {q.text}
+                            </p>
+                            <span className="shrink-0 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                              {q.difficulty || "BEGINNER"}
+                            </span>
+                          </div>
+
+                          {q.options && Object.keys(q.options).length > 0 && (
+                            <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {Object.entries(q.options).map(([optKey, optText]) => (
+                                <div
+                                  key={optKey}
+                                  className="flex items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-3 py-1.5 text-xs text-slate-700"
+                                >
+                                  <span className="font-bold text-[#7056ED]">{optKey}.</span>
+                                  <span className="truncate">{optText}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 px-6 py-4 bg-slate-50 shrink-0">
+              <div className="text-center sm:text-left">
+                <p className="text-xs font-bold text-slate-800">5 Questions Available</p>
+                <p className="text-[11px] text-slate-500">Click to start test flow for this skill.</p>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => setIsQuestionModalOpen(false)}
+                  className="flex-1 sm:flex-initial rounded-full border border-slate-200 bg-white px-5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    setIsQuestionModalOpen(false);
+                    handleTakeQuickTest(selectedNode);
+                  }}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-2 rounded-full bg-[#7056ED] px-6 py-2.5 text-xs font-bold text-white hover:bg-[#5f44e2] cursor-pointer shadow-md shadow-purple-500/20 transition-all hover:scale-[1.02]"
+                >
+                  <Zap className="h-3.5 w-3.5 fill-current" />
+                  <span>Take a Quick Test</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Selected Skill Detail Panel */}
       {selectedNode && (

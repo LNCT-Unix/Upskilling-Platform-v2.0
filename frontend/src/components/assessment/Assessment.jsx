@@ -7,6 +7,8 @@ export default function Assessment() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const track = searchParams.get('track') || 'backend-development';
+  const selectedSkillSlug = searchParams.get('skill');
+  const selectedSkillName = searchParams.get('skillName');
 
   const [screen, setScreen] = useState('start'); // start | test | result
   const [stepData, setStepData] = useState(null); // current step (question, total, etc.)
@@ -151,8 +153,19 @@ export default function Assessment() {
           {/* START SCREEN */}
           {screen === 'start' && (
             <div className={`${card} text-center`}>
-              <h1 className="text-3xl font-extrabold capitalize">{track.replace(/-/g, ' ')} Assessment</h1>
-              <p className="text-slate-600">Correct = +1, Wrong = -1</p>
+              {selectedSkillName && (
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-3.5 py-1 text-xs font-semibold text-[#7056ED]">
+                  Skill Assessment Mode
+                </div>
+              )}
+              <h1 className="text-3xl font-extrabold capitalize">
+                {selectedSkillName ? `${selectedSkillName} Quick Test` : `${track.replace(/-/g, ' ')} Assessment`}
+              </h1>
+              <p className="text-slate-600">
+                {selectedSkillName
+                  ? `Evaluate your knowledge and verify your mastery in ${selectedSkillName}.`
+                  : 'Correct = +1, Wrong = -1'}
+              </p>
               {message && <p className="text-sm text-red-500">{message}</p>}
               <button onClick={startTest} disabled={loading} className={button}>
                 {loading ? 'Starting...' : 'Start Test'}

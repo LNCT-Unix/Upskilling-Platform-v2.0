@@ -102,7 +102,17 @@ function Dashboard() {
           <Assessment />
         )}
         {activeTab === "View Skill Graph" && (
-          <SkillGraph onStartAssessment={() => navigate("/assessment")} />
+          <SkillGraph
+            onStartAssessment={(skill) => {
+              if (skill) {
+                navigate(
+                  `/assessment?track=backend-development&skill=${skill.slug}&skillName=${encodeURIComponent(skill.name)}&skillId=${skill.id}`
+                );
+              } else {
+                navigate("/assessment");
+              }
+            }}
+          />
         )}
         {activeTab === "Test Report" && <Page title="Test Report" text="Your test report will show up here." />}
         {activeTab === "Roadmap" && <Page title="Roadmap Path" text="Your roadmap will show up here." />}

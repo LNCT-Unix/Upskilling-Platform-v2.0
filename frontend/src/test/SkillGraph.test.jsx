@@ -166,4 +166,40 @@ describe('SkillGraph Component with Actual Backend Data', () => {
       expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
     });
   });
+
+  it('renders 5 questions and the Take a Quick Test button for the selected skill', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => fullBackendData,
+    });
+
+    const onStartAssessment = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <SkillGraph onStartAssessment={onStartAssessment} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('My Skill Graph')).toBeInTheDocument();
+    });
+
+    // Check that "5 Questions" badge and "Take a Quick Test" button exist
+    await waitFor(() => {
+      expect(screen.getByText('5 Questions')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /take a quick test/i })).toBeInTheDocument();
+    });
+
+    // Verify clicking "Take a Quick Test" triggers onStartAssessment
+    const quickTestBtn = screen.getByRole('button', { name: /take a quick test/i });
+    fireEvent.click(quickTestBtn);
+    expect(onStartAssessment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: fullBackendData.nodes[0].id,
+        name: fullBackendData.nodes[0].name,
+      })
+    );
+  });
 });
