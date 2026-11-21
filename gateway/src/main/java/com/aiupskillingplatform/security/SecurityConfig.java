@@ -87,6 +87,7 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/track/**",
                                 "/api/tracks/**",
+                                "/api/roadmaps/**",
                                 "/api/health"
                         ).permitAll()
 
