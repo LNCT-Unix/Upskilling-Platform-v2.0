@@ -44,6 +44,11 @@ public class User {
     @Column(nullable = false)
     private Role role = Role.USER;
 
+
+    @Column(name = "github_id", unique = true)
+    private String githubId;
+
+
     private Instant createdAt = Instant.now();
 
     private Instant updatedAt = Instant.now();

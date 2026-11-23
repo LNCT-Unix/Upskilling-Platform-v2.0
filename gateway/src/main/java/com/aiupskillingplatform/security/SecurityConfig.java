@@ -1,14 +1,14 @@
+
 package com.aiupskillingplatform.security;
 
+import com.aiupskillingplatform.services.auth.GitHubOAuth2SuccessHandler;
+import com.aiupskillingplatform.services.auth.GitHubOAuth2UserService;
 import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
 import org.springframework.http.HttpStatus;
-
-
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.NullSecurityContextRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -27,9 +28,17 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final GitHubOAuth2UserService githubOAuth2UserService;
+    private final GitHubOAuth2SuccessHandler githubOAuth2SuccessHandler;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            GitHubOAuth2UserService githubOAuth2UserService,
+            GitHubOAuth2SuccessHandler githubOAuth2SuccessHandler
+    ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.githubOAuth2UserService = githubOAuth2UserService;
+        this.githubOAuth2SuccessHandler = githubOAuth2SuccessHandler;
     }
 
     @Bean
@@ -66,7 +75,11 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
 
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                )
+
+                .securityContext(context ->
+                        context.securityContextRepository(new NullSecurityContextRepository())
                 )
 
                 .exceptionHandling(exception -> exception
@@ -81,19 +94,28 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(
-                                "/error",
                                 "/",
                                 "/api/auth/register",
                                 "/api/auth/login",
+                                "/oauth2/**",
+                                "/login/oauth2/**",
                                 "/track/**",
                                 "/api/tracks/**",
                                 "/api/roadmaps/**",
-                                "/api/health"
+                                "/api/health",
+                                "/api/auth/oauth2/exchange"
                         ).permitAll()
 
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         .anyRequest().authenticated()
+                )
+
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo ->
+                                userInfo.userService(githubOAuth2UserService)
+                        )
+                        .successHandler(githubOAuth2SuccessHandler)
                 )
 
                 .addFilterBefore(

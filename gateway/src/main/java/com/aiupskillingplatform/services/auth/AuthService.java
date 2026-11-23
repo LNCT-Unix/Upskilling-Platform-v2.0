@@ -82,13 +82,20 @@ public class AuthService {
             );
         }
 
+        if (user.getPasswordHash() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "This account uses GitHub login. Please continue with GitHub."
+            );
+        }
+
         if (!passwordEncoder.matches(
                 request.password(),
                 user.getPasswordHash()
         )) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
-                    "Invalid email or password"
+                    "Incorrect password"
             );
         }
 
