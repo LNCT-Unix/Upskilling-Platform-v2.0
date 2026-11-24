@@ -637,3 +637,4 @@ INSERT INTO resources (topic_id, type, title, url) VALUES
     ('33-2', 'docs', 'GitHub Actions Documentation', 'https://docs.github.com/en/actions/writing-workflows'),
     ('33-2', 'courses', 'Understanding GitHub Actions', 'https://docs.github.com/en/actions/learn-github-actions/understanding-github-actions')
 ON CONFLICT (topic_id, url) DO UPDATE SET type = EXCLUDED.type, title = EXCLUDED.title;
+ALTER TABLE resources ADD CONSTRAINT uk_resources_topic_url UNIQUE (topic_id, url);
