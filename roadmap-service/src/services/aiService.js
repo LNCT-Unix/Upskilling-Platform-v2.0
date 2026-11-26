@@ -197,7 +197,7 @@ function validateAndSanitizeRoadmap(parsed, dependencies = []) {
     };
   });
 
-  // Verify prerequisite ordering against dependencies
+  
   for (const dep of dependencies) {
     const prereqIdx = skillIndexMap.get(dep.prerequisite);
     const depIdx = skillIndexMap.get(dep.dependent);
