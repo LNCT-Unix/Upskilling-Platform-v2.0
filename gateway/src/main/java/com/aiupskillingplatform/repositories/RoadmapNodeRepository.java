@@ -13,5 +13,7 @@ public interface RoadmapNodeRepository extends JpaRepository<RoadmapNode, UUID> 
     List<RoadmapNode> findByRoadmapIdOrderBySequenceOrderAsc(UUID roadmapId);
 
     List<RoadmapNode> findByParentNodeIdOrderBySequenceOrderAsc(UUID parentNodeId);
+
+    java.util.Optional<RoadmapNode> findBySlug(String slug);
 }
 
