@@ -3,7 +3,7 @@ const mongoose=require("mongoose");
 const Roadmap=require("../models/Roadmap.js");
 
 const ALLOWED_STATUSES = new Set(["NOT_STARTED", "IN_PROGRESS", "COMPLETED"]);
-
+// create roadmap
 async function createRoadmap(req, res) {
   try {
     const { requestId, userId, trackId, assessmentRef, targetRole, studyHoursPerWeek, assessment, questions, skills, dependencies } = req.body;
@@ -20,6 +20,8 @@ async function createRoadmap(req, res) {
 });
 
 if (existing) {
+console.log(`[Roadmap] Idempotent hit for userId=${normalizedUserId} requestId=${normalizedRequestId}`);
+
   return res.status(200).json(
     { success: true, data: existing });
 }

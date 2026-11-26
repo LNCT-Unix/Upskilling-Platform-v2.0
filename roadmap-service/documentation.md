@@ -141,11 +141,64 @@ Trigger this only when the learner explicitly clicks **"Generate My Roadmap"** a
     "version": 1,
     "percentComplete": 0,
     "generation": {
-      "model": "gemini-2.5-flash",
+      "model": "gemini-3.8-flash",
       "promptVersion": "roadmap-v1",
       "createdAt": "2026-11-26T14:37:44.826Z"
     },
-    "skillAnalysis": [ ... ],
+    "assessment": {
+      "assessmentId": "backend-development-attempt-1",
+      "trackSlug": "backend-development",
+      "difficulty": "BEGINNER",
+      "totalQuestions": 4,
+      "correctCount": 2,
+      "wrongCount": 2,
+      "score": 50,
+      "questions": [
+        {
+          "questionId": "99887766-5544-3322-1100-aabbccddeeff",
+          "skillSlug": "variables-data-types",
+          "skillName": "Variables & Data Types",
+          "difficulty": "BEGINNER",
+          "questionText": "Which of the following data types in Java is 64-bit?",
+          "isCorrect": true
+        }
+      ]
+    },
+    "skillAnalysis": [
+      {
+        "skillSlug": "variables-data-types",
+        "name": "Variables & Data Types",
+        "categoryName": "Core Programming",
+        "difficultyLevel": "BEGINNER",
+        "status": "UNLOCKED",
+        "masteryScore": 1,
+        "confidence": null,
+        "evidenceCount": 1,
+        "priority": "LOW"
+      },
+      {
+        "skillSlug": "spring-framework-ioc",
+        "name": "Spring Framework IoC",
+        "categoryName": "Backend Frameworks",
+        "difficultyLevel": "INTERMEDIATE",
+        "status": "LOCKED",
+        "masteryScore": 0,
+        "confidence": null,
+        "evidenceCount": 1,
+        "priority": "HIGH"
+      },
+      {
+        "skillSlug": "docker-basics",
+        "name": "Docker Basics",
+        "categoryName": "DevOps",
+        "difficultyLevel": "INTERMEDIATE",
+        "status": "NOT_ASSESSED",
+        "masteryScore": 0,
+        "confidence": null,
+        "evidenceCount": 0,
+        "priority": "MEDIUM"
+      }
+    ],
     "skillGaps": ["Spring Framework IoC", "RESTful APIs"],
     "steps": [
       {
@@ -158,18 +211,32 @@ Trigger this only when the learner explicitly clicks **"Generate My Roadmap"** a
         "prerequisites": ["Classes & Objects", "Variables & Data Types"],
         "estimatedHours": 10,
         "status": "NOT_STARTED",
-        "reason": "...",
+        "reason": "You missed the Spring IoC assessment question; understanding Inversion of Control and Dependency Injection is essential for structuring modern Java enterprise backends.",
         "topics": [
           {
             "topicId": "step-1-0",
             "name": "Inversion of Control & ApplicationContext",
-            "points": ["..."],
+            "points": [
+              "Core concept of IoC vs traditional object instantiation",
+              "BeanFactory versus ApplicationContext in Spring",
+              "Spring Bean lifecycle callbacks and configuration scopes"
+            ],
+            "status": "NOT_STARTED"
+          },
+          {
+            "topicId": "step-1-1",
+            "name": "Spring Core Annotations & Dependency Injection",
+            "points": [
+              "Configuring beans with @Component, @Service, and @Repository",
+              "Constructor injection versus setter and field injection",
+              "Using @Autowired, @Qualifier, and @Value annotations"
+            ],
             "status": "NOT_STARTED"
           }
         ],
         "project": {
           "title": "Dependency Injection Service Container",
-          "description": "..."
+          "description": "Build a command-line application using Spring Core that configures and injects decoupled notification, logging, and user management services via constructor injection."
         },
         "resources": [
           {
@@ -178,7 +245,23 @@ Trigger this only when the learner explicitly clicks **"Generate My Roadmap"** a
             "url": "https://docs.spring.io/spring-framework/reference/core.html",
             "type": "documentation",
             "platform": "Spring",
-            "description": "..."
+            "description": "Official documentation detailing IoC containers, bean definitions, and dependency injection."
+          },
+          {
+            "resourceId": null,
+            "title": "Spring Framework Tutorial for Beginners",
+            "url": "https://www.youtube.com/watch?v=If1Lw4pLLEo",
+            "type": "video",
+            "platform": "YouTube - Amigoscode",
+            "description": "Comprehensive video walkthrough covering the core principles of Spring IoC and bean management."
+          },
+          {
+            "resourceId": null,
+            "title": "Baeldung - Inversion of Control and Dependency Injection in Spring",
+            "url": "https://www.baeldung.com/inversion-control-and-dependency-injection-in-spring",
+            "type": "tutorial",
+            "platform": "Baeldung",
+            "description": "Practical guide explaining component scanning, bean definitions, and autowiring strategies."
           }
         ]
       }
@@ -196,8 +279,14 @@ Trigger this only when the learner explicitly clicks **"Generate My Roadmap"** a
 
 * `trackId` is optional; if provided, filters to that track.
 * Returns the latest `ACTIVE` roadmap sorted by `{ version: -1 }`.
-* **`200 OK`**: `{ "success": true, "data": { ...roadmap } }`
-* **`404 Not Found`**: `{ "success": false, "message": "No active Roadmap found" }`
+* **`200 OK`**: Same `{ "success": true, "data": { ... } }` structure as Section 3.1.
+* **`404 Not Found`**:
+  ```json
+  {
+    "success": false,
+    "message": "No active Roadmap found"
+  }
+  ```
 
 ---
 
@@ -205,7 +294,34 @@ Trigger this only when the learner explicitly clicks **"Generate My Roadmap"** a
 `GET /api/roadmaps/me/history?userId=<userId>&trackId=<trackId>`
 
 * Returns all versions (`ACTIVE` and `ARCHIVED`) sorted by `{ version: -1 }`.
-* **`200 OK`**: `{ "success": true, "data": [ ...roadmaps ] }`
+* **`200 OK`**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "_id": "6b08469f1f205b5b5a811e25",
+        "userId": "e7c2e0b1-4f32-4d2a-92b1-52643a60a7d9",
+        "trackId": "11111111-2222-3333-4444-555555555555",
+        "targetRole": "Backend Developer",
+        "status": "ACTIVE",
+        "version": 2,
+        "percentComplete": 0,
+        "steps": [ ... ]
+      },
+      {
+        "_id": "6b0844381f205b5b5a811e13",
+        "userId": "e7c2e0b1-4f32-4d2a-92b1-52643a60a7d9",
+        "trackId": "11111111-2222-3333-4444-555555555555",
+        "targetRole": "Backend Developer",
+        "status": "ARCHIVED",
+        "version": 1,
+        "percentComplete": 25,
+        "steps": [ ... ]
+      }
+    ]
+  }
+  ```
 
 ---
 
@@ -226,9 +342,52 @@ Trigger this only when the learner explicitly clicks **"Generate My Roadmap"** a
   * If provided, updates that topic's `status` and automatically derives the parent step's `status` (`COMPLETED` when all topics are done, `IN_PROGRESS` when partially done, `NOT_STARTED` when none).
   * If omitted, updates `stepId`'s `status` directly.
 * Automatically recalculates `percentComplete` (`0`–`100`).
-* **`200 OK`**: `{ "success": true, "data": { ...updatedRoadmap } }`
+
+#### Success Response (`200 OK`)
+Returns the full updated roadmap with the new `percentComplete`, derived `steps[].status`, and updated `topics[].status`:
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "6b0844381f205b5b5a811e13",
+    "userId": "e7c2e0b1-4f32-4d2a-92b1-52643a60a7d9",
+    "status": "ACTIVE",
+    "version": 1,
+    "percentComplete": 25,
+    "steps": [
+      {
+        "stepId": "step-1",
+        "status": "IN_PROGRESS",
+        "topics": [
+          { "topicId": "step-1-0", "name": "Inversion of Control & ApplicationContext", "status": "COMPLETED" },
+          { "topicId": "step-1-1", "name": "Spring Core Annotations & Dependency Injection", "status": "NOT_STARTED" }
+        ]
+      }
+    ]
+  }
+}
+```
 * **`400 Bad Request`**: Invalid `roadmapId`, missing `stepId`, or invalid `status`.
 * **`404 Not Found`**: Roadmap, step, or topic not found, or `roadmapId` does not belong to `userId`.
+
+---
+
+### 3.5 Standard Error Response Format
+All `4xx` and `5xx` errors follow this shape:
+```json
+{
+  "success": false,
+  "message": "Human-readable error description"
+}
+```
+
+| Status | When it happens |
+| :--- | :--- |
+| `400` | Missing/invalid `userId`, `targetRole`, `questions`/`skills`, `roadmapId`, `stepId`, or `status` |
+| `401` | Missing or invalid `x-internal-secret` header |
+| `404` | Active roadmap, step, or topic not found (or `roadmapId` belongs to another `userId`) |
+| `500` | Unexpected server/database error |
+| `502` | Gemini timeout/failure or invalid AI output (existing `ACTIVE` roadmap is untouched) |
 
 ---
 

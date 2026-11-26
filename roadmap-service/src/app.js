@@ -9,9 +9,13 @@ const roadmapRoutes = require("./routes/roadmapRoutes.js");
 app.use(cors());
 app.use(express.json());
 
-app.use((req, res,next) => {
-    console.log("Request received");
-    next();
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const ms = Date.now() - start;
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${ms}ms)`);
+  });
+  next();
 });
 app.use("/api", verifyInternalAuth);
 

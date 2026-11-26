@@ -295,7 +295,8 @@ Rules:
 - Include 2-3 "resources" per step mixing "documentation", "video", and "tutorial" with real, working "https://" URLs (no placeholder or example.com URLs).
 - In "reason", briefly explain why this step matters for ${targetRole} given the learner's assessment results.
 `;
-
+ // LLM call
+const aiStart = Date.now();
   let response;
   try {
     response = await ai.models.generateContent({
@@ -307,6 +308,8 @@ Rules:
         responseSchema: roadmapResponseSchema
       }
     });
+    console.log(`[AI] Gemini (${MODEL_NAME}) responded in ${Date.now() - aiStart}ms for userId=${userId}`);
+
   } catch (err) {
     throw createAiError("AI roadmap generation failed or timed out");
   }
@@ -355,7 +358,7 @@ Rules:
     { ...versionFilter, status: "ACTIVE", _id: { $ne: savedRoadmap._id } },
     { $set: { status: "ARCHIVED" } }
   );
-
+    console.log(`[Roadmap] Saved v${nextVersion} (${steps.length} steps) for userId=${userId}`);
   return savedRoadmap;
 }
 
