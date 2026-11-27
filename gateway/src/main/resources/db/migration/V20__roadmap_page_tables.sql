@@ -206,6 +206,10 @@ INSERT INTO topics (id, step_id, name, points, "order") VALUES
     ('33-2', 33, 'Pipeline', '["Build, test, deploy","GitHub Actions basics"]'::jsonb, 2)
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, points = EXCLUDED.points, "order" = EXCLUDED."order";
 
+-- Ensure UUID defaults exist even if tables were pre-created by Hibernate ddl-auto=update
+ALTER TABLE resources ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE user_progress ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
 -- Seed Resources
 INSERT INTO resources (topic_id, type, title, url) VALUES
     ('1-0', 'videos', 'Java Data Types Explained for Beginners | Java Tutorial Day 6 | 30 Days Java Challenge', 'https://www.youtube.com/watch?v=zcOwnf8y8c0'),
@@ -637,4 +641,16 @@ INSERT INTO resources (topic_id, type, title, url) VALUES
     ('33-2', 'docs', 'GitHub Actions Documentation', 'https://docs.github.com/en/actions/writing-workflows'),
     ('33-2', 'courses', 'Understanding GitHub Actions', 'https://docs.github.com/en/actions/learn-github-actions/understanding-github-actions')
 ON CONFLICT (topic_id, url) DO UPDATE SET type = EXCLUDED.type, title = EXCLUDED.title;
-ALTER TABLE resources ADD CONSTRAINT uk_resources_topic_url UNIQUE (topic_id, url);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_schema = 'public'
+          AND table_name = 'resources'
+          AND constraint_name = 'uk_resources_topic_url'
+    ) THEN
+        ALTER TABLE resources ADD CONSTRAINT uk_resources_topic_url UNIQUE (topic_id, url);
+    END IF;
+END $$;
