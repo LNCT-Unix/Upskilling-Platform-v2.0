@@ -357,22 +357,9 @@ export default function Roadmap() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      {/* Top bar */}
-      <header className="flex items-center justify-between bg-white px-8 py-4 shadow-sm">
-        <OctoByteLogo onClick={() => navigate("/dashboard")} />
-
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="rounded-full bg-violet-600 px-5 py-2 font-semibold text-white hover:bg-violet-700 cursor-pointer"
-        >
-          Back to Dashboard
-        </button>
-      </header>
-
+    <div className="mx-auto max-w-4xl p-8">
       {/* Roadmap content */}
-      <main className="mx-auto max-w-4xl p-8">
-        <h2 className="text-3xl font-bold text-slate-800 mb-2">
+      <h2 className="text-3xl font-bold text-slate-800 mb-2">
           Learning Roadmap
         </h2>
 
@@ -460,6 +447,7 @@ export default function Roadmap() {
                 const id = getStepId(step);
                 const title = getStepTitle(step);
                 const topics = getStepTopics(step);
+                const allTopicsCompleted = isStepDone(step);
 
                 const status = getStepStatus(step);
                 const locked = status === "Locked" || status === "LOCKED";
@@ -633,6 +621,26 @@ export default function Roadmap() {
                             </div>
                           );
                         })}
+
+                        {/* Show this step's quiz only after every topic is completed */}
+                        {allTopicsCompleted && (
+                          <div className="mt-5 flex justify-end border-t border-gray-200 pt-4">
+                            <button
+                              onClick={() =>
+                                navigate("/MilestoneAssessment", {
+                                  state: {
+                                    stepId: id,
+                                    stepTitle: title,
+                                    topics: topics.map((topic) => getTopicName(topic)),
+                                  },
+                                })
+                              }
+                              className="rounded-full bg-violet-600 px-6 py-3 text-sm font-semibold text-white hover:bg-violet-700 transition-all cursor-pointer"
+                            >
+                              Take Quiz →
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -641,17 +649,6 @@ export default function Roadmap() {
             </div>
           </div>
         )}
-
-        {/* Take assessment button */}
-        <div className="mt-8">
-          <button
-            onClick={() => navigate("/assessment")}
-            className="rounded-full bg-violet-600 px-6 py-2.5 font-semibold text-white hover:bg-violet-700 cursor-pointer"
-          >
-            Take Assessment
-          </button>
-        </div>
-      </main>
     </div>
   );
 }

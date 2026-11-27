@@ -56,6 +56,10 @@ When any DAG/dependency/validation or standard business exception occurs, the se
 | `GET` | `/api/dependencies/skills/{skillId}/prerequisites` | **Yes** | Any Authenticated | Fetch prerequisites of a specific skill |
 | `POST` | `/api/dependencies` | **Yes** | `ADMIN` only | Create a new directed skill dependency edge |
 | `DELETE` | `/api/dependencies/{dependencyId}` | **Yes** | `ADMIN` only | Delete an existing skill dependency edge |
+| `POST` | `/api/roadmaps/generate` | **Yes** | Any Authenticated | Generate personalized AI roadmap after assessment |
+| `GET` | `/api/roadmaps/me` | **Yes** | Any Authenticated | Fetch active personalized roadmap for user |
+| `GET` | `/api/roadmaps/me/history` | **Yes** | Any Authenticated | Fetch all roadmap versions (active & archived) |
+| `PATCH` | `/api/roadmaps/{roadmapId}/progress` | **Yes** | Any Authenticated | Update topic/step progress on a roadmap |
 
 ---
 
@@ -718,6 +722,241 @@ export async function removeSkillDependency(dependencyId: string): Promise<void>
   }
 }
 ```
+
+
+---
+
+### 3.7. Personalized AI Roadmaps (Node.js Service Integration)
+
+These endpoints provide access to the Gemini-powered personalized roadmap microservice, proxied securely through the Spring Boot Gateway.
+- **Frontend responsibility**: Always call the Gateway (`/api/roadmaps/**`) with the learner's `Authorization: Bearer <JWT>`.
+- **Gateway responsibility**: Authenticates the user, retrieves their verified PostgreSQL `userId`, compiles their latest diagnostic assessment attempt, graded question results, skill masteries, and DAG dependencies, and securely requests Gemini roadmap generation.
+- **Microservice responsibility**: Runs Gemini AI prompts, manages versioning (`ACTIVE` vs `ARCHIVED`), stores documents in MongoDB, and recalculates step statuses and `percentComplete`.
+
+---
+
+#### 3.7.1. Generate Personalized Roadmap
+#### `POST /api/roadmaps/generate`
+Triggered when the user completes their diagnostic assessment and clicks **"Generate My Roadmap"**.
+
+- **Authentication**: Required (`Bearer <JWT>`)
+- **Headers**:
+  ```http
+  Authorization: Bearer <token>
+  Content-Type: application/json
+  ```
+- **Request Body** (optional parameters to customize prompt):
+  ```json
+  {
+    "trackSlug": "backend-development",
+    "targetRole": "Backend Engineer",
+    "studyHoursPerWeek": 15,
+    "requestId": "req_attempt_12345"
+  }
+  ```
+  *(All body fields are optional. If omitted, the backend defaults to the user's latest completed assessment track and standard study pace).*
+
+- **Success Response**: `200 OK` (idempotent repeat) or `201 Created` (new roadmap)
+  ```json
+  {
+    "success": true,
+    "data": {
+      "_id": "67451a9f1a2b3c4d5e6f7a8b",
+      "userId": "9a123456-789a-bcde-f012-3456789abcde",
+      "trackId": "c8b1897a-966c-48be-8b2f-76348398cdb0",
+      "version": 1,
+      "status": "ACTIVE",
+      "targetRole": "Backend Engineer",
+      "studyHoursPerWeek": 15,
+      "estimatedWeeks": 8,
+      "percentComplete": 0,
+      "steps": [
+        {
+          "stepId": "step-1",
+          "title": "Core Java & Fundamentals",
+          "description": "Master primitive types, control flows, and OOP principles",
+          "order": 1,
+          "status": "NOT_STARTED",
+          "topics": [
+            {
+              "topicId": "topic-1",
+              "title": "Data Types and Memory Allocation",
+              "description": "Understand primitive vs reference types and stack/heap memory",
+              "order": 1,
+              "status": "NOT_STARTED"
+            },
+            {
+              "topicId": "topic-2",
+              "title": "OOP: Encapsulation & Inheritance",
+              "description": "Implementing access modifiers and class hierarchies",
+              "order": 2,
+              "status": "NOT_STARTED"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-11-27T14:30:00.000Z",
+      "updatedAt": "2026-11-27T14:30:00.000Z"
+    }
+  }
+  ```
+
+- **Example Fetch**:
+  ```typescript
+  export async function generatePersonalizedRoadmap(token: string, options?: {
+    trackSlug?: string;
+    targetRole?: string;
+    studyHoursPerWeek?: number;
+    requestId?: string;
+  }) {
+    const res = await fetch('http://localhost:8080/api/roadmaps/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(options || {})
+    });
+    if (!res.ok) throw new Error(`Generation failed: ${res.status}`);
+    return res.json();
+  }
+  ```
+
+---
+
+#### 3.7.2. Get Current Active Roadmap
+#### `GET /api/roadmaps/me?trackId={trackId}`
+Retrieves the logged-in user's latest `ACTIVE` personalized roadmap.
+
+- **Authentication**: Required (`Bearer <JWT>`)
+- **Query Parameters**:
+  - `trackId` *(optional)*: Filter roadmap by track ID.
+- **Success Response**: `200 OK`
+  ```json
+  {
+    "success": true,
+    "data": {
+      "_id": "67451a9f1a2b3c4d5e6f7a8b",
+      "userId": "9a123456-789a-bcde-f012-3456789abcde",
+      "status": "ACTIVE",
+      "version": 1,
+      "targetRole": "Backend Engineer",
+      "percentComplete": 25,
+      "steps": [...]
+    }
+  }
+  ```
+- **Error Response**: `404 Not Found` if no active roadmap exists yet for the user.
+  ```json
+  {
+    "success": false,
+    "message": "No active Roadmap found"
+  }
+  ```
+
+- **Example Fetch**:
+  ```typescript
+  export async function getMyActiveRoadmap(token: string, trackId?: string) {
+    const query = trackId ? `?trackId=${encodeURIComponent(trackId)}` : '';
+    const res = await fetch(`http://localhost:8080/api/roadmaps/me${query}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`Failed to load roadmap: ${res.status}`);
+    return res.json();
+  }
+  ```
+
+---
+
+#### 3.7.3. Get Roadmap Version History
+#### `GET /api/roadmaps/me/history?trackId={trackId}`
+Retrieves all historical roadmap iterations (`ACTIVE` and `ARCHIVED`) generated for the user, sorted newest first (`version: -1`).
+
+- **Authentication**: Required (`Bearer <JWT>`)
+- **Query Parameters**:
+  - `trackId` *(optional)*: Filter versions by track ID.
+- **Success Response**: `200 OK`
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "_id": "67451a9f1a2b3c4d5e6f7a8b",
+        "version": 2,
+        "status": "ACTIVE",
+        "percentComplete": 40,
+        "createdAt": "2026-11-27T15:00:00.000Z"
+      },
+      {
+        "_id": "67400e8c1a2b3c4d5e6f111a",
+        "version": 1,
+        "status": "ARCHIVED",
+        "percentComplete": 100,
+        "createdAt": "2026-11-20T10:00:00.000Z"
+      }
+    ]
+  }
+  ```
+
+---
+
+#### 3.7.4. Update Roadmap Progress
+#### `PATCH /api/roadmaps/{roadmapId}/progress`
+Updates the status of a specific step or topic within the user's roadmap. The backend automatically recalculates:
+1. The parent step status (`COMPLETED` if all topics completed, `IN_PROGRESS` if partially done, `NOT_STARTED` if none started).
+2. The overall roadmap `percentComplete` (0 - 100%).
+
+- **Authentication**: Required (`Bearer <JWT>`)
+- **Path Variable**:
+  - `roadmapId`: The MongoDB `_id` of the roadmap.
+- **Request Body**:
+  ```json
+  {
+    "stepId": "step-1",
+    "topicId": "topic-1",
+    "status": "COMPLETED"
+  }
+  ```
+  *Allowed `status` values*: `"NOT_STARTED"`, `"IN_PROGRESS"`, `"COMPLETED"`.
+  *Note*: If `topicId` is omitted, `stepId` status is updated directly.
+
+- **Success Response**: `200 OK`
+  ```json
+  {
+    "success": true,
+    "data": {
+      "_id": "67451a9f1a2b3c4d5e6f7a8b",
+      "percentComplete": 50,
+      "steps": [...]
+    }
+  }
+  ```
+
+- **Example Fetch**:
+  ```typescript
+  export async function updateRoadmapProgress(
+    token: string,
+    roadmapId: string,
+    stepId: string,
+    topicId: string,
+    status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
+  ) {
+    const res = await fetch(`http://localhost:8080/api/roadmaps/${roadmapId}/progress`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ stepId, topicId, status })
+    });
+    if (!res.ok) throw new Error(`Progress update failed: ${res.status}`);
+    return res.json();
+  }
+  ```
 
 ---
 
