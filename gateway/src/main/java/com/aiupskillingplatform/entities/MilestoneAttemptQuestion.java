@@ -24,7 +24,7 @@ public class MilestoneAttemptQuestion {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "question_id", nullable = false)
-    private MilestoneQuestion question;
+    private Question question;
 
     @Column(name = "question_order", nullable = false)
     private Integer questionOrder;
@@ -42,8 +42,8 @@ public class MilestoneAttemptQuestion {
     public MilestoneAttempt getAttempt() { return attempt; }
     public void setAttempt(MilestoneAttempt attempt) { this.attempt = attempt; }
 
-    public MilestoneQuestion getQuestion() { return question; }
-    public void setQuestion(MilestoneQuestion question) { this.question = question; }
+    public Question getQuestion() { return question; }
+    public void setQuestion(Question question) { this.question = question; }
 
     public Integer getQuestionOrder() { return questionOrder; }
     public void setQuestionOrder(Integer questionOrder) { this.questionOrder = questionOrder; }
