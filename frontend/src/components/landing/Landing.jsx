@@ -113,7 +113,7 @@ export default function Landing() {
                 </div>
 
                 <p className="text-xs sm:text-sm text-slate-500 font-medium pt-1">
-                  Free for learners • Seeded with 56 skills
+                  Free for learners 
                 </p>
               </div>
 

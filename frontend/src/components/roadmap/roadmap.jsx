@@ -460,6 +460,7 @@ export default function Roadmap() {
                 const id = getStepId(step);
                 const title = getStepTitle(step);
                 const topics = getStepTopics(step);
+                const allTopicsCompleted = isStepDone(step);
 
                 const status = getStepStatus(step);
                 const locked = status === "Locked" || status === "LOCKED";
@@ -633,6 +634,26 @@ export default function Roadmap() {
                             </div>
                           );
                         })}
+
+                        {/* Show this step's quiz only after every topic is completed */}
+                        {allTopicsCompleted && (
+                          <div className="mt-5 flex justify-end border-t border-gray-200 pt-4">
+                            <button
+                              onClick={() =>
+                                navigate("/MilestoneAssessment", {
+                                  state: {
+                                    stepId: id,
+                                    stepTitle: title,
+                                    topics: topics.map((topic) => getTopicName(topic)),
+                                  },
+                                })
+                              }
+                              className="rounded-full bg-violet-600 px-6 py-3 text-sm font-semibold text-white hover:bg-violet-700 transition-all cursor-pointer"
+                            >
+                              Take Quiz →
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -642,15 +663,6 @@ export default function Roadmap() {
           </div>
         )}
 
-        {/* Take assessment button */}
-        <div className="mt-8">
-          <button
-            onClick={() => navigate("/assessment")}
-            className="rounded-full bg-violet-600 px-6 py-2.5 font-semibold text-white hover:bg-violet-700 cursor-pointer"
-          >
-            Take Assessment
-          </button>
-        </div>
       </main>
     </div>
   );

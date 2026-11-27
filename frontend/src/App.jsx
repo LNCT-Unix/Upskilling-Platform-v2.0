@@ -11,6 +11,7 @@ import Profile from './components/profile/profile'
 import Roadmap from './components/roadmap/roadmap'
 import OAuthCallback from './components/auth/OAuthCallback'
 
+
 import './App.css'
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
         <Route path="/profile" element={<Profile />} />
 
         <Route path="/roadmap" element={<Roadmap />} />
+       
 
         {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />
