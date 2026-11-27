@@ -48,4 +48,32 @@ public class MilestoneQuestion {
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    // Explicit Getters and Setters for IDE safety
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public Skill getSkill() { return skill; }
+    public void setSkill(Skill skill) { this.skill = skill; }
+
+    public RoadmapNode getNode() { return node; }
+    public void setNode(RoadmapNode node) { this.node = node; }
+
+    public String getQuestionText() { return questionText; }
+    public void setQuestionText(String questionText) { this.questionText = questionText; }
+
+    public Map<String, String> getOptions() { return options; }
+    public void setOptions(Map<String, String> options) { this.options = options; }
+
+    public String getCorrectAnswer() { return correctAnswer; }
+    public void setCorrectAnswer(String correctAnswer) { this.correctAnswer = correctAnswer; }
+
+    public String getExplanation() { return explanation; }
+    public void setExplanation(String explanation) { this.explanation = explanation; }
+
+    public String getDifficulty() { return difficulty; }
+    public void setDifficulty(String difficulty) { this.difficulty = difficulty; }
+
+    public Boolean getIsActive() { return isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
 }

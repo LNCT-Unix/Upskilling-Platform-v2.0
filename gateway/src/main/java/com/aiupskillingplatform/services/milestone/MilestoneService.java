@@ -3,8 +3,8 @@ package com.aiupskillingplatform.services.milestone;
 import com.aiupskillingplatform.dto.milestone.*;
 import com.aiupskillingplatform.entities.*;
 import com.aiupskillingplatform.repositories.*;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -14,11 +14,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class MilestoneService {
 
     public static final int QUESTIONS_PER_ATTEMPT = 8;
@@ -35,6 +33,27 @@ public class MilestoneService {
     private final RoadmapNodeRepository roadmapNodeRepository;
     private final UserSkillMasteryRepository masteryRepository;
     private final UserRepository userRepository;
+
+    @Autowired
+    public MilestoneService(
+            MilestoneQuestionRepository questionRepository,
+            MilestoneAttemptRepository attemptRepository,
+            MilestoneAttemptQuestionRepository attemptQuestionRepository,
+            SkillRepository skillRepository,
+            SkillRoadmapRepository skillRoadmapRepository,
+            RoadmapNodeRepository roadmapNodeRepository,
+            UserSkillMasteryRepository masteryRepository,
+            UserRepository userRepository
+    ) {
+        this.questionRepository = questionRepository;
+        this.attemptRepository = attemptRepository;
+        this.attemptQuestionRepository = attemptQuestionRepository;
+        this.skillRepository = skillRepository;
+        this.skillRoadmapRepository = skillRoadmapRepository;
+        this.roadmapNodeRepository = roadmapNodeRepository;
+        this.masteryRepository = masteryRepository;
+        this.userRepository = userRepository;
+    }
 
     /**
      * API 1: Start Milestone Test for 1 whole Skill
@@ -69,18 +88,21 @@ public class MilestoneService {
                 .orElse(0) + 1;
 
         // Fetch active questions belonging to the requested skill
-        List<MilestoneQuestion> activeQuestions = questionRepository.findBySkillIdAndIsActiveTrue(skill.getId());
+        List<MilestoneQuestion> fetchedQuestions = questionRepository.findBySkillIdAndIsActiveTrue(skill.getId());
 
         // Fallback: If questions are stored with node_id pointing to roadmap nodes of this skill
-        if (activeQuestions.isEmpty()) {
+        if (fetchedQuestions.isEmpty()) {
             Optional<SkillRoadmap> roadmapOpt = skillRoadmapRepository.findBySkillIdAndActiveTrue(skill.getId());
             if (roadmapOpt.isPresent() && !roadmapOpt.get().getNodes().isEmpty()) {
-                List<UUID> nodeIds = roadmapOpt.get().getNodes().stream()
-                        .map(RoadmapNode::getId)
-                        .collect(Collectors.toList());
-                activeQuestions = questionRepository.findByNodeIdInAndIsActiveTrue(nodeIds);
+                List<UUID> nodeIds = new ArrayList<>();
+                for (RoadmapNode node : roadmapOpt.get().getNodes()) {
+                    nodeIds.add(node.getId());
+                }
+                fetchedQuestions = questionRepository.findByNodeIdInAndIsActiveTrue(nodeIds);
             }
         }
+
+        final List<MilestoneQuestion> activeQuestions = new ArrayList<>(fetchedQuestions);
 
         if (activeQuestions.size() < QUESTIONS_PER_ATTEMPT) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -90,9 +112,14 @@ public class MilestoneService {
 
         // Exclude questions already used by the same user for this skill
         List<UUID> usedQuestionIds = attemptQuestionRepository.findUsedQuestionIdsByUserAndSkill(user.getId(), skill.getId());
-        List<MilestoneQuestion> unusedQuestions = activeQuestions.stream()
-                .filter(q -> !usedQuestionIds.contains(q.getId()))
-                .collect(Collectors.toList());
+        Set<UUID> usedIdSet = new HashSet<>(usedQuestionIds);
+
+        List<MilestoneQuestion> unusedQuestions = new ArrayList<>();
+        for (MilestoneQuestion q : activeQuestions) {
+            if (!usedIdSet.contains(q.getId())) {
+                unusedQuestions.add(q);
+            }
+        }
 
         List<MilestoneQuestion> selectedQuestions;
         if (unusedQuestions.size() >= QUESTIONS_PER_ATTEMPT) {
@@ -100,12 +127,18 @@ public class MilestoneService {
             selectedQuestions = new ArrayList<>(unusedQuestions.subList(0, QUESTIONS_PER_ATTEMPT));
         } else {
             // Graceful fallback: top up from remaining active questions
-            Set<UUID> unusedIds = unusedQuestions.stream().map(MilestoneQuestion::getId).collect(Collectors.toSet());
-            List<MilestoneQuestion> pool = new ArrayList<>(unusedQuestions);
+            Set<UUID> unusedIds = new HashSet<>();
+            for (MilestoneQuestion q : unusedQuestions) {
+                unusedIds.add(q.getId());
+            }
 
-            List<MilestoneQuestion> repeatPool = activeQuestions.stream()
-                    .filter(q -> !unusedIds.contains(q.getId()))
-                    .collect(Collectors.toList());
+            List<MilestoneQuestion> pool = new ArrayList<>(unusedQuestions);
+            List<MilestoneQuestion> repeatPool = new ArrayList<>();
+            for (MilestoneQuestion q : activeQuestions) {
+                if (!unusedIds.contains(q.getId())) {
+                    repeatPool.add(q);
+                }
+            }
             Collections.shuffle(repeatPool);
 
             for (MilestoneQuestion q : repeatPool) {
@@ -167,24 +200,28 @@ public class MilestoneService {
         User user = currentUser(authentication);
         UUID attemptId = parseUuid(attemptIdStr, "attemptId");
 
-        MilestoneAttempt attempt = attemptRepository.findById(attemptId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Milestone attempt not found: " + attemptIdStr));
+        Optional<MilestoneAttempt> attemptOpt = attemptRepository.findById(attemptId);
+        if (!attemptOpt.isPresent()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Milestone attempt not found: " + attemptIdStr);
+        }
+        MilestoneAttempt attempt = attemptOpt.get();
 
         validateOwnership(attempt, user);
 
         List<MilestoneAttemptQuestion> attemptQuestions = attemptQuestionRepository
                 .findByAttemptIdOrderByQuestionOrderAsc(attempt.getId());
 
-        List<MilestoneQuestionDTO> questionDTOs = attemptQuestions.stream().map(maq -> {
+        List<MilestoneQuestionDTO> questionDTOs = new ArrayList<>();
+        for (MilestoneAttemptQuestion maq : attemptQuestions) {
             MilestoneQuestion q = maq.getQuestion();
-            return MilestoneQuestionDTO.builder()
+            questionDTOs.add(MilestoneQuestionDTO.builder()
                     .questionId(q.getId().toString())
                     .questionOrder(maq.getQuestionOrder())
                     .questionText(q.getQuestionText())
                     .options(q.getOptions() != null ? q.getOptions() : Collections.emptyMap())
                     .selectedAnswer(maq.getSelectedAnswer())
-                    .build();
-        }).collect(Collectors.toList());
+                    .build());
+        }
 
         return GetMilestoneResponse.builder()
                 .attemptId(attempt.getId().toString())
@@ -203,8 +240,11 @@ public class MilestoneService {
         UUID attemptId = parseUuid(attemptIdStr, "attemptId");
         UUID questionId = parseUuid(questionIdStr, "questionId");
 
-        MilestoneAttempt attempt = attemptRepository.findById(attemptId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Milestone attempt not found: " + attemptIdStr));
+        Optional<MilestoneAttempt> attemptOpt = attemptRepository.findById(attemptId);
+        if (!attemptOpt.isPresent()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Milestone attempt not found: " + attemptIdStr);
+        }
+        MilestoneAttempt attempt = attemptOpt.get();
 
         validateOwnership(attempt, user);
 
@@ -213,9 +253,12 @@ public class MilestoneService {
                     "Cannot save answer. Attempt is already " + attempt.getStatus());
         }
 
-        MilestoneAttemptQuestion maq = attemptQuestionRepository.findByAttemptIdAndQuestionId(attemptId, questionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Question " + questionIdStr + " is not assigned to attempt " + attemptIdStr));
+        Optional<MilestoneAttemptQuestion> maqOpt = attemptQuestionRepository.findByAttemptIdAndQuestionId(attemptId, questionId);
+        if (!maqOpt.isPresent()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Question " + questionIdStr + " is not assigned to attempt " + attemptIdStr);
+        }
+        MilestoneAttemptQuestion maq = maqOpt.get();
 
         String answer = normalizeAnswer(request.getSelectedAnswer());
         maq.setSelectedAnswer(answer);
@@ -237,8 +280,11 @@ public class MilestoneService {
         User user = currentUser(authentication);
         UUID attemptId = parseUuid(attemptIdStr, "attemptId");
 
-        MilestoneAttempt attempt = attemptRepository.findById(attemptId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Milestone attempt not found: " + attemptIdStr));
+        Optional<MilestoneAttempt> attemptOpt = attemptRepository.findById(attemptId);
+        if (!attemptOpt.isPresent()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Milestone attempt not found: " + attemptIdStr);
+        }
+        MilestoneAttempt attempt = attemptOpt.get();
 
         validateOwnership(attempt, user);
 
@@ -295,14 +341,17 @@ public class MilestoneService {
 
     private void updateSkillMasteryOnPass(User user, Skill skill, int score, int totalQuestions) {
         try {
-            UserSkillMastery mastery = masteryRepository.findByUserIdAndSkillId(user.getId(), skill.getId())
-                    .orElseGet(() -> {
-                        UserSkillMastery m = new UserSkillMastery();
-                        m.setUser(user);
-                        m.setSkill(skill);
-                        m.setCreatedAt(Instant.now());
-                        return m;
-                    });
+            Optional<UserSkillMastery> masteryOpt = masteryRepository.findByUserIdAndSkillId(user.getId(), skill.getId());
+            UserSkillMastery mastery;
+            if (masteryOpt.isPresent()) {
+                mastery = masteryOpt.get();
+            } else {
+                mastery = new UserSkillMastery();
+                mastery.setUser(user);
+                mastery.setSkill(skill);
+                mastery.setCreatedAt(Instant.now());
+            }
+
             mastery.setStatus("UNLOCKED");
             double calculatedScore = ((double) score / totalQuestions) * 100.0;
             if (calculatedScore > (mastery.getMasteryScore() != null ? mastery.getMasteryScore() : 0.0)) {
@@ -321,17 +370,20 @@ public class MilestoneService {
         if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User must be authenticated");
         }
-        return userRepository.findByEmail(auth.getName())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+        Optional<User> userOpt = userRepository.findByEmail(auth.getName());
+        if (!userOpt.isPresent()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
+        }
+        return userOpt.get();
     }
 
     private Skill resolveSkill(StartMilestoneRequest request) {
         String identifier = null;
-        if (request.getSkillId() != null && !request.getSkillId().isBlank()) {
+        if (request.getSkillId() != null && !request.getSkillId().trim().isEmpty()) {
             identifier = request.getSkillId().trim();
-        } else if (request.getSkillSlug() != null && !request.getSkillSlug().isBlank()) {
+        } else if (request.getSkillSlug() != null && !request.getSkillSlug().trim().isEmpty()) {
             identifier = request.getSkillSlug().trim();
-        } else if (request.getNodeId() != null && !request.getNodeId().isBlank()) {
+        } else if (request.getNodeId() != null && !request.getNodeId().trim().isEmpty()) {
             RoadmapNode node = resolveNode(request.getNodeId());
             if (node.getRoadmap() != null && node.getRoadmap().getSkill() != null) {
                 return node.getRoadmap().getSkill();
@@ -344,25 +396,38 @@ public class MilestoneService {
 
         try {
             UUID uuid = UUID.fromString(identifier);
-            return skillRepository.findById(uuid)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Skill not found with id: " + identifier));
+            Optional<Skill> skillOpt = skillRepository.findById(uuid);
+            if (skillOpt.isPresent()) {
+                return skillOpt.get();
+            }
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Skill not found with id: " + identifier);
         } catch (IllegalArgumentException e) {
-            return skillRepository.findBySlug(identifier)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Skill not found with slug: " + identifier));
+            Optional<Skill> skillOpt = skillRepository.findBySlug(identifier);
+            if (skillOpt.isPresent()) {
+                return skillOpt.get();
+            }
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Skill not found with slug: " + identifier);
         }
     }
 
     private RoadmapNode resolveNode(String nodeId) {
-        if (nodeId == null || nodeId.isBlank()) {
+        if (nodeId == null || nodeId.trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "nodeId is required");
         }
+        String cleanNodeId = nodeId.trim();
         try {
-            UUID uuid = UUID.fromString(nodeId.trim());
-            return roadmapNodeRepository.findById(uuid)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Roadmap node not found with id: " + nodeId));
+            UUID uuid = UUID.fromString(cleanNodeId);
+            Optional<RoadmapNode> nodeOpt = roadmapNodeRepository.findById(uuid);
+            if (nodeOpt.isPresent()) {
+                return nodeOpt.get();
+            }
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Roadmap node not found with id: " + cleanNodeId);
         } catch (IllegalArgumentException e) {
-            return roadmapNodeRepository.findBySlug(nodeId.trim())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Roadmap node not found with slug: " + nodeId));
+            Optional<RoadmapNode> nodeOpt = roadmapNodeRepository.findBySlug(cleanNodeId);
+            if (nodeOpt.isPresent()) {
+                return nodeOpt.get();
+            }
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Roadmap node not found with slug: " + cleanNodeId);
         }
     }
 
@@ -372,8 +437,8 @@ public class MilestoneService {
         }
     }
 
-    private UUID parseUuid(String idStr, String paramName) {
-        if (idStr == null || idStr.isBlank()) {
+    public UUID parseUuid(String idStr, String paramName) {
+        if (idStr == null || idStr.trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, paramName + " is required");
         }
         try {
@@ -384,7 +449,7 @@ public class MilestoneService {
     }
 
     private String normalizeAnswer(String answer) {
-        if (answer == null || answer.isBlank()) {
+        if (answer == null || answer.trim().isEmpty()) {
             return null;
         }
         String trimmed = answer.trim().toUpperCase();
