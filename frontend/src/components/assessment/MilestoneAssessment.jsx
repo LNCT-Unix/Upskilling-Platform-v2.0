@@ -123,16 +123,8 @@ export default function MilestoneAssessment() {
   const primaryBtn = "px-6 py-2.5 rounded-full bg-[#7056ED] hover:bg-[#5f44e2] text-white font-semibold text-sm cursor-pointer disabled:opacity-50";
 
   return (
-    <div className="min-h-screen bg-[#F7F8FC] text-slate-800 flex flex-col">
-      <header className="bg-white border-b border-slate-200 h-16 px-6 flex items-center justify-between">
-        <img src={logo} alt="OctoByte Logo" onClick={() => navigate("/dashboard")} className="h-10 cursor-pointer" />
-        <button onClick={() => navigate("/roadmap")} className="text-sm font-semibold text-slate-600 hover:text-[#7056ED] cursor-pointer">
-          Back to Roadmap
-        </button>
-      </header>
-
-      <main className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-2xl">
+    <div className="flex-1 flex items-center justify-center p-6">
+      <div className="w-full max-w-2xl">
           {loading && (
             <div className={`${card} text-center`}>
               <p className="text-base font-semibold text-[#7056ED]">Starting assessment...</p>
@@ -255,7 +247,6 @@ export default function MilestoneAssessment() {
             </div>
           )}
         </div>
-      </main>
-    </div>
+      </div>
   );
 }

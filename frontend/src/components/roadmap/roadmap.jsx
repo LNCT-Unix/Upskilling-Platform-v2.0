@@ -357,22 +357,9 @@ export default function Roadmap() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      {/* Top bar */}
-      <header className="flex items-center justify-between bg-white px-8 py-4 shadow-sm">
-        <OctoByteLogo onClick={() => navigate("/dashboard")} />
-
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="rounded-full bg-violet-600 px-5 py-2 font-semibold text-white hover:bg-violet-700 cursor-pointer"
-        >
-          Back to Dashboard
-        </button>
-      </header>
-
+    <div className="mx-auto max-w-4xl p-8">
       {/* Roadmap content */}
-      <main className="mx-auto max-w-4xl p-8">
-        <h2 className="text-3xl font-bold text-slate-800 mb-2">
+      <h2 className="text-3xl font-bold text-slate-800 mb-2">
           Learning Roadmap
         </h2>
 
@@ -662,8 +649,6 @@ export default function Roadmap() {
             </div>
           </div>
         )}
-
-      </main>
     </div>
   );
 }
