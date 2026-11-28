@@ -626,15 +626,24 @@ export default function Roadmap() {
                         {allTopicsCompleted && (
                           <div className="mt-5 flex justify-end border-t border-gray-200 pt-4">
                             <button
-                              onClick={() =>
-                                navigate("/MilestoneAssessment", {
+                              onClick={() => {
+                                const skillIdentifier =
+                                  step.skillId ||
+                                  step.slug ||
+                                  step.skillSlug ||
+                                  (title || "")
+                                    .toLowerCase()
+                                    .replace(/\band\b/g, "")
+                                    .replace(/[^a-z0-9]+/g, "-")
+                                    .replace(/^-|-$/g, "");
+                                navigate(`/milestone-assessment/${encodeURIComponent(skillIdentifier)}`, {
                                   state: {
                                     stepId: id,
                                     stepTitle: title,
                                     topics: topics.map((topic) => getTopicName(topic)),
                                   },
-                                })
-                              }
+                                });
+                              }}
                               className="rounded-full bg-violet-600 px-6 py-3 text-sm font-semibold text-white hover:bg-violet-700 transition-all cursor-pointer"
                             >
                               Take Quiz →

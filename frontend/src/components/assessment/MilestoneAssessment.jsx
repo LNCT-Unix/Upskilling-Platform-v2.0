@@ -1,12 +1,26 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { API_BASE_URL } from "../../api/config";
 import { getAuthToken, clearAuthSession } from "../../api/auth";
 import logo from "../../assets/octobyte-logo.jpeg";
 
+function toSkillSlug(title) {
+  return (title || "")
+    .toLowerCase()
+    .replace(/\band\b/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 export default function MilestoneAssessment() {
-  const { skillId } = useParams();
+  const { skillId: paramSkillId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+  const skillId =
+    paramSkillId ||
+    location.state?.skillId ||
+    location.state?.skillSlug ||
+    toSkillSlug(location.state?.stepTitle);
 
   const [attempt, setAttempt] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -50,6 +64,11 @@ export default function MilestoneAssessment() {
 
   const startAssessment = useCallback(async () => {
     if (inFlightRef.current) return;
+    if (!skillId) {
+      setError("No skill selected for milestone assessment.");
+      setLoading(false);
+      return;
+    }
     inFlightRef.current = true;
     setLoading(true);
     setError("");
