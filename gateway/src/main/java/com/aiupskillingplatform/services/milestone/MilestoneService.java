@@ -3,8 +3,6 @@ package com.aiupskillingplatform.services.milestone;
 import com.aiupskillingplatform.dto.milestone.*;
 import com.aiupskillingplatform.entities.*;
 import com.aiupskillingplatform.repositories.*;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -27,7 +25,7 @@ public class MilestoneService {
     public static final String STATUS_COMPLETED = "COMPLETED";
     public static final String STATUS_ABANDONED = "ABANDONED";
 
-    private final QuestionRepository questionRepository;
+    private final MilestoneQuestionRepository milestoneQuestionRepository;
     private final MilestoneAttemptRepository attemptRepository;
     private final MilestoneAttemptQuestionRepository attemptQuestionRepository;
     private final SkillRepository skillRepository;
@@ -35,21 +33,19 @@ public class MilestoneService {
     private final RoadmapNodeRepository roadmapNodeRepository;
     private final UserSkillMasteryRepository masteryRepository;
     private final UserRepository userRepository;
-    private final ObjectMapper objectMapper;
 
     @Autowired
     public MilestoneService(
-            QuestionRepository questionRepository,
+            MilestoneQuestionRepository milestoneQuestionRepository,
             MilestoneAttemptRepository attemptRepository,
             MilestoneAttemptQuestionRepository attemptQuestionRepository,
             SkillRepository skillRepository,
             SkillRoadmapRepository skillRoadmapRepository,
             RoadmapNodeRepository roadmapNodeRepository,
             UserSkillMasteryRepository masteryRepository,
-            UserRepository userRepository,
-            ObjectMapper objectMapper
+            UserRepository userRepository
     ) {
-        this.questionRepository = questionRepository;
+        this.milestoneQuestionRepository = milestoneQuestionRepository;
         this.attemptRepository = attemptRepository;
         this.attemptQuestionRepository = attemptQuestionRepository;
         this.skillRepository = skillRepository;
@@ -57,7 +53,6 @@ public class MilestoneService {
         this.roadmapNodeRepository = roadmapNodeRepository;
         this.masteryRepository = masteryRepository;
         this.userRepository = userRepository;
-        this.objectMapper = objectMapper;
     }
 
     /**
@@ -92,8 +87,9 @@ public class MilestoneService {
         int nextAttemptNumber = attemptRepository.findMaxAttemptNumberByUserIdAndSkillId(user.getId(), skill.getId())
                 .orElse(0) + 1;
 
-        // Fetch active questions belonging to the requested skill via question_skills join
-        List<Question> activeQuestions = new ArrayList<>(questionRepository.findBySkillId(skill.getId()));
+        // Fetch active questions belonging to the requested skill from milestone_questions
+        List<MilestoneQuestion> activeQuestions = new ArrayList<>(
+                milestoneQuestionRepository.findBySkillIdAndIsActiveTrue(skill.getId()));
 
         if (activeQuestions.size() < QUESTIONS_PER_ATTEMPT) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -105,34 +101,34 @@ public class MilestoneService {
         List<UUID> usedQuestionIds = attemptQuestionRepository.findUsedQuestionIdsByUserAndSkill(user.getId(), skill.getId());
         Set<UUID> usedIdSet = new HashSet<>(usedQuestionIds);
 
-        List<Question> unusedQuestions = new ArrayList<>();
-        for (Question q : activeQuestions) {
+        List<MilestoneQuestion> unusedQuestions = new ArrayList<>();
+        for (MilestoneQuestion q : activeQuestions) {
             if (!usedIdSet.contains(q.getId())) {
                 unusedQuestions.add(q);
             }
         }
 
-        List<Question> selectedQuestions;
+        List<MilestoneQuestion> selectedQuestions;
         if (unusedQuestions.size() >= QUESTIONS_PER_ATTEMPT) {
             Collections.shuffle(unusedQuestions);
             selectedQuestions = new ArrayList<>(unusedQuestions.subList(0, QUESTIONS_PER_ATTEMPT));
         } else {
             // Graceful fallback: top up from already-used questions (reshuffled)
             Set<UUID> unusedIds = new HashSet<>();
-            for (Question q : unusedQuestions) {
+            for (MilestoneQuestion q : unusedQuestions) {
                 unusedIds.add(q.getId());
             }
 
-            List<Question> pool = new ArrayList<>(unusedQuestions);
-            List<Question> repeatPool = new ArrayList<>();
-            for (Question q : activeQuestions) {
+            List<MilestoneQuestion> pool = new ArrayList<>(unusedQuestions);
+            List<MilestoneQuestion> repeatPool = new ArrayList<>();
+            for (MilestoneQuestion q : activeQuestions) {
                 if (!unusedIds.contains(q.getId())) {
                     repeatPool.add(q);
                 }
             }
             Collections.shuffle(repeatPool);
 
-            for (Question q : repeatPool) {
+            for (MilestoneQuestion q : repeatPool) {
                 if (pool.size() < QUESTIONS_PER_ATTEMPT) {
                     pool.add(q);
                 } else {
@@ -157,7 +153,7 @@ public class MilestoneService {
         // Create 8 milestone_attempt_questions records
         List<MilestoneAttemptQuestion> attemptQuestions = new ArrayList<>(QUESTIONS_PER_ATTEMPT);
         for (int i = 0; i < QUESTIONS_PER_ATTEMPT; i++) {
-            Question q = selectedQuestions.get(i);
+            MilestoneQuestion q = selectedQuestions.get(i);
             MilestoneAttemptQuestion maq = new MilestoneAttemptQuestion();
             maq.setAttempt(savedAttempt);
             maq.setQuestion(q);
@@ -204,12 +200,12 @@ public class MilestoneService {
 
         List<MilestoneQuestionDTO> questionDTOs = new ArrayList<>();
         for (MilestoneAttemptQuestion maq : attemptQuestions) {
-            Question q = maq.getQuestion();
+            MilestoneQuestion q = maq.getQuestion();
             questionDTOs.add(MilestoneQuestionDTO.builder()
                     .questionId(q.getId().toString())
                     .questionOrder(maq.getQuestionOrder())
                     .questionText(q.getQuestionText())
-                    .options(parseOptions(q.getOptionData()))
+                    .options(q.getOptions() != null ? q.getOptions() : Collections.emptyMap())
                     .selectedAnswer(maq.getSelectedAnswer())
                     .build());
         }
@@ -291,7 +287,7 @@ public class MilestoneService {
 
         int correctCount = 0;
         for (MilestoneAttemptQuestion maq : attemptQuestions) {
-            Question q = maq.getQuestion();
+            MilestoneQuestion q = maq.getQuestion();
             boolean correct = q.getCorrectAnswer() != null
                     && maq.getSelectedAnswer() != null
                     && q.getCorrectAnswer().trim().equalsIgnoreCase(maq.getSelectedAnswer().trim());
@@ -331,22 +327,6 @@ public class MilestoneService {
     }
 
     // ─── Helpers ───────────────────────────────────────────────────────────────
-
-    /**
-     * Parse the JSONB option_data string from the questions table into a Map.
-     * option_data is stored as: {"A":"option text","B":"...","C":"...","D":"..."}
-     */
-    private Map<String, String> parseOptions(String optionData) {
-        if (optionData == null || optionData.trim().isEmpty()) {
-            return Collections.emptyMap();
-        }
-        try {
-            return objectMapper.readValue(optionData, new TypeReference<LinkedHashMap<String, String>>() {});
-        } catch (Exception e) {
-            log.warn("Failed to parse option_data: {}", optionData);
-            return Collections.emptyMap();
-        }
-    }
 
     private void updateSkillMasteryOnPass(User user, Skill skill, int score, int totalQuestions) {
         try {
