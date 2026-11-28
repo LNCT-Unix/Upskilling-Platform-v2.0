@@ -281,7 +281,9 @@ export default function Landing() {
 
             {/* Centered Outline "Get started" button from image */}
             <div className="flex justify-center pb-12">
-              <button className="border-2 border-[#7056ED] text-[#7056ED] hover:bg-[#7056ED] hover:text-white font-semibold text-sm px-10 py-3 rounded-full transition-all duration-200 bg-white/50 backdrop-blur-sm">
+              <button
+              onClick={() => navigate("/login")}
+               className="border-2 border-[#7056ED] text-[#7056ED] hover:bg-[#7056ED] hover:text-white font-semibold text-sm px-10 py-3 rounded-full transition-all duration-200 bg-white/50 backdrop-blur-sm">
                 Get started
               </button>
             </div>
