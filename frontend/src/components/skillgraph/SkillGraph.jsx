@@ -501,7 +501,7 @@ export default function SkillGraph({ onStartAssessment }) {
       .catch((err) => {
         if (!isCancelled) {
           console.error("Error fetching skill questions:", err);
-          setQuestionsError("Failed to fetch questions for this skill. Please try again.");
+          setQuestionsError(err?.message || "Failed to fetch questions for this skill. Please try again.");
           setQuestionsLoading(false);
         }
       });
