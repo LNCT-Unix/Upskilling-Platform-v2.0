@@ -7,6 +7,7 @@ export default function Assessment() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const track = searchParams.get('track') || 'backend-development';
+  const selectedSkillId = searchParams.get('skillId');
   const selectedSkillSlug = searchParams.get('skill');
   const selectedSkillName = searchParams.get('skillName');
 
@@ -21,12 +22,17 @@ export default function Assessment() {
 
   const token = localStorage.getItem('token');
 
-  // Verify authentication on mount
+  // Verify authentication and redirect skill-specific tests to MilestoneAssessment
   useEffect(() => {
     if (!token) {
       navigate('/login');
+      return;
     }
-  }, [token, navigate]);
+    const skillIdentifier = selectedSkillId || selectedSkillSlug;
+    if (skillIdentifier) {
+      navigate(`/milestone-assessment/${encodeURIComponent(skillIdentifier)}`, { replace: true });
+    }
+  }, [token, selectedSkillId, selectedSkillSlug, navigate]);
 
   const authHeaders = {
     'Content-Type': 'application/json',

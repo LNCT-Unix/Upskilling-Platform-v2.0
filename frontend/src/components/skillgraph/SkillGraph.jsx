@@ -519,9 +519,8 @@ export default function SkillGraph({ onStartAssessment }) {
       if (onStartAssessment) {
         onStartAssessment(nodeToTest);
       } else {
-        navigate(
-          `/assessment?track=backend-development&skill=${nodeToTest.slug}&skillName=${encodeURIComponent(nodeToTest.name)}&skillId=${nodeToTest.id}`
-        );
+        const skillIdentifier = nodeToTest.id || nodeToTest.slug;
+        navigate(`/milestone-assessment/${encodeURIComponent(skillIdentifier)}`);
       }
     },
     [onStartAssessment, selectedNode, navigate]
